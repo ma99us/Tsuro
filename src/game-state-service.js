@@ -1,6 +1,6 @@
 export default class GameStateService {
   static GameStates = {STARTING: 1, PLAYING: 5, FINISHED: 10};
-  static PlayerStates = {IDLE: 1, PLAYING: 3, DONE: 6, LOST: 11, SPECTATOR: 12};
+  static PlayerStates = {IDLE: 1, PLAYING: 3, DONE: 6, LOST: 11, WON: 12, SPECTATOR: 15};
 
   // Global game state object template
   static gameStateTemplate = {

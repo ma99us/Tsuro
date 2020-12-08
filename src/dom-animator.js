@@ -4,7 +4,7 @@
  * @param styles object like {transition: "all .3s linear", left: "100px"}
  * @param callback
  */
-export function transitionElement(elem, styles, callback = null) {
+export async function transitionElement(elem, styles, callback = null) {
   if (typeof elem !== "object") {
     throw "'elem' should be a DOM element";
   }
@@ -12,33 +12,41 @@ export function transitionElement(elem, styles, callback = null) {
     throw "'styles' should be an object with style names";
   }
 
-  function onEnd(ev) {
-    elem.removeEventListener("transitionend", onEnd);
-    elem.removeEventListener("oTransitionEnd", onEnd);
-    elem.removeEventListener("transitionend", onEnd);
-    elem.removeEventListener("webkitTransitionEnd", onEnd);
+  return new Promise(resolve => {
+    function onEnd(ev) {
+      elem.removeEventListener("transitionend", onEnd);
+      elem.removeEventListener("oTransitionEnd", onEnd);
+      elem.removeEventListener("transitionend", onEnd);
+      elem.removeEventListener("webkitTransitionEnd", onEnd);
 
-    console.log("transition finished; propertyName=" + ev.propertyName + ", elapsedTime=" + ev.elapsedTime);
-    if (callback) {
-      callback(ev);
+      console.log("transition finished; propertyName=" + ev.propertyName + ", elapsedTime=" + ev.elapsedTime);  //#DEBUG
+
+      if (callback) {
+        callback(ev);
+      }
+      resolve("transitionElement done");
     }
-  }
 
-  elem.addEventListener("transitionend", onEnd, false);
-  elem.addEventListener("oTransitionEnd", onEnd, false);
-  elem.addEventListener("transitionend", onEnd, false);
-  elem.addEventListener("webkitTransitionEnd", onEnd, false);
+    elem.addEventListener("transitionend", onEnd, false);
+    elem.addEventListener("oTransitionEnd", onEnd, false);
+    elem.addEventListener("transitionend", onEnd, false);
+    elem.addEventListener("webkitTransitionEnd", onEnd, false);
 
-  // force browser to calculate initial style of the element
-  const computedStyle = window.getComputedStyle(elem, null);
-  for (let styleName in styles) {
-    void computedStyle.getPropertyValue(styleName);
-  }
+    // force browser to calculate initial style of the element
+    const computedStyle = window.getComputedStyle(elem, null);
+    for (let styleName in styles) {
+      void computedStyle.getPropertyValue(styleName);
+    }
 
-  // force browser to render element first, before applying transition result style
-  requestAnimationFrame(() => {
-    setStyles(elem, styles);
+    // force browser to render element first, before applying transition result style
+    requestAnimationFrame(() => {
+      setStyles(elem, styles);
+    });
   });
+}
+
+export function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 /**

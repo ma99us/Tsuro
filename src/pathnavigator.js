@@ -1,6 +1,11 @@
+import * as drawing from "./drawing.js";
 import {averageColor, isSimilarColor} from "./pathfinder.js";
 import Tile from "./tile-component.js";
-import {DEBUG_PATH, log} from "./tsuro.js";
+import {log} from "./tsuro.js";
+import {tilesOverlay} from "./tsuro";
+
+const DEBUG_PATH = false;  // show more info about path finding
+const StopPixel = [0,0,0,0];  // stop path finding immediately if encountered such pixels
 
 // calculate the "difference" between the two colors
 function getColorDiff(px1, px2) {
@@ -14,36 +19,44 @@ function getColorDiff(px1, px2) {
 }
 
 // traverse path found in 'metaInfo' one by one
-function traversePaths(canvas) {
+async function traversePaths(canvas) {
   log("Traversing all paths...");
+
+  if (DEBUG_PATH) {
+    drawing.canvasClear(tilesOverlay);
+    drawing.canvasDrawLine(tilesOverlay, 0, 0, tilesOverlay.width, 0, [0xff, 0, 0, 0xff], 3);
+    drawing.canvasDrawLine(tilesOverlay, tilesOverlay.width, 0, tilesOverlay.width, tilesOverlay.height, [0xff, 0, 0, 0xff], 3);
+    drawing.canvasDrawLine(tilesOverlay, tilesOverlay.width, tilesOverlay.height, 0, tilesOverlay.height, [0xff, 0, 0, 0xff], 3);
+    drawing.canvasDrawLine(tilesOverlay, 0, tilesOverlay.height, 0, 0, [0xff, 0, 0, 0xff], 3);
+  }
 
   // top paths
   for (let i = 0; i < metaInfo.topPaths.length; i++) {
     const path = metaInfo.topPaths[i];
     path.x0 = path.offset;
     path.y0 = metaInfo.topEdge;
-    traversePath(canvas, path, DIR.BOTTOM);
+    await traversePath(canvas, path, DIR.BOTTOM);
   }
   // right paths
   for (let i = 0; i < metaInfo.rightPaths.length; i++) {
     const path = metaInfo.rightPaths[i];
     path.x0 = metaInfo.rigthEdge;
     path.y0 = path.offset;
-    traversePath(canvas, path, DIR.LEFT);
+    await traversePath(canvas, path, DIR.LEFT);
   }
   // bottom paths
   for (let i = 0; i < metaInfo.bottomPaths.length; i++) {
     const path = metaInfo.bottomPaths[i];
     path.x0 = path.offset;
     path.y0 = metaInfo.bottomEdge;
-    traversePath(canvas, path, DIR.TOP);
+    await traversePath(canvas, path, DIR.TOP);
   }
   // left paths
   for (let i = 0; i < metaInfo.leftPaths.length; i++) {
     const path = metaInfo.leftPaths[i];
     path.x0 = metaInfo.leftEdge;
     path.y0 = path.offset;
-    traversePath(canvas, path, DIR.RIGHT);
+    await traversePath(canvas, path, DIR.RIGHT);
   }
 }
 
@@ -83,6 +96,8 @@ export async function traversePath(canvas, path, dir, func = null) {
   const astep = adelta / 10;  // do 10 direction samples per step
   const pixelData = canvas.getContext('2d');
 
+  let stopPixelFound = false;
+
   const findNextPathSegment = (path) => {
     // find all path segments candidates along the current path direction
     const segs = [];
@@ -106,6 +121,9 @@ export async function traversePath(canvas, path, dir, func = null) {
       }
       seg.color = averageColor(colors);
       segs.push(seg);
+
+      stopPixelFound = stopPixelFound || isSimilarColor(StopPixel, seg.color, 10);
+      // console.log("stopPixelFound=" + stopPixelFound + ", seg color: " + seg.color);    // #DEBUG
     }
 
     // find the segment with the color closest to the original path color and if possible in the same direction
@@ -113,7 +131,7 @@ export async function traversePath(canvas, path, dir, func = null) {
     let mostSimilarSegDelta = Number.MAX_SAFE_INTEGER;
     for (let i = 0; i < segs.length; i++) {
       let colorDiff = getColorDiff(path.color, segs[i].color);
-      let dirDiff = 5 * segs[i].dirFactor;
+      let dirDiff = 5 * segs[i].dirFactor; // FIXME: hardcoded?
       let diff = colorDiff + dirDiff;
       //if (isSimilarColor(path.color, segs[i].color, 70) && colorDiff < mostSimilarSegDelta) { // FIXME: hardcoded?
       if (diff < mostSimilarSegDelta) {
@@ -121,7 +139,7 @@ export async function traversePath(canvas, path, dir, func = null) {
         mostSimilarSegDelta = diff;
       }
     }
-    if (!isSimilarColor(path.color, mostSimilarSeg.color, 90 - 20 * mostSimilarSeg.dirFactor)) {
+    if (!isSimilarColor(path.color, mostSimilarSeg.color, 90 - 20 * mostSimilarSeg.dirFactor)) { // FIXME: hardcoded?
       return null;
     }
     return mostSimilarSeg;
@@ -130,7 +148,7 @@ export async function traversePath(canvas, path, dir, func = null) {
   const maxSteps = 1000;
   do {
     let nextSeg = findNextPathSegment(path);
-    if (nextSeg) {
+    if (nextSeg && !stopPixelFound) {
       path.dir = nextSeg.dir;
       path.x2 = path.x1;
       path.x1 = nextSeg.x;
@@ -139,7 +157,7 @@ export async function traversePath(canvas, path, dir, func = null) {
       path.step++;
       path.found = true;
       if (DEBUG_PATH) {
-        canvasDrawCircle(tilesOverlay, path.x1, path.y1, path.size, null, path.color);
+        drawing.canvasDrawCircle(tilesOverlay, path.x1, path.y1, path.size, null, path.color);
       }
       if (func) {
         await func(path);
@@ -147,7 +165,7 @@ export async function traversePath(canvas, path, dir, func = null) {
     } else {
       path.found = false;
       if (DEBUG_PATH) {
-        canvasDrawCircle(tilesOverlay, path.x1, path.y1, path.size, [0, 0xff, 0, 0xff], [0xff, 0, 0, 0xff]);
+        drawing.canvasDrawCircle(tilesOverlay, path.x1, path.y1, path.size, [0, 0xff, 0, 0xff], [0xff, 0, 0, 0xff]);
       }
       log("Path ends at (" + path.x1 + ", " + path.y1 + "), steps: " + path.step);
       if (func) {

@@ -5,10 +5,15 @@ module.exports = {
   entry: ['babel-polyfill', './src/tsuro.js'],
   output: {
     path: path.resolve(__dirname, 'build'),
-    filename: 'main.bundle.js',
-    library: "Main",
+    filename: '[name].bundle.js',
+    library: "main",
     libraryTarget: 'umd',
     libraryExport: 'default'
+  },
+  optimization: {
+    splitChunks: {
+      chunks: 'all',
+    },
   },
   module: {
     rules: [
