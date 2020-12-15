@@ -1,3 +1,5 @@
+import {makePlayerColorStyle} from "../tsuro";
+
 /**
  * A bunch of utility function to draw on a canvas
  */
@@ -46,4 +48,12 @@ export function canvasClear(canvas) {
   }
   const ctx = canvas.getContext("2d");
   ctx.clearRect(1, 1, canvas.width - 1, canvas.height - 1);
+}
+
+export function makeGlowFilter(size, color, blur = 0) {
+  return `drop-shadow(${size}px 0px ${blur}px ${color}) drop-shadow(0px ${size}px ${blur}px ${color}) drop-shadow(0px -${size}px ${blur}px ${color}) drop-shadow(-${size}px 0px ${blur}px ${color})`;
+}
+
+export function makeDropShadowFilter(size, color, blur = 0) {
+  return `drop-shadow(${size}px ${size}px ${blur}px ${color})`;
 }

@@ -1,6 +1,6 @@
-import {transitionElement} from "./dom-animator.js";
+import {transitionElement} from "./common/dom-animator.js";
 import Tile from "./tile-component.js";
-import {log, stateService} from "./tsuro.js"
+import {deckArea, log, stateService} from "./tsuro.js"
 
 const TileBackImgSrc = "img/tile_back_1.png";
 
@@ -8,10 +8,20 @@ export default class TilesDeck {
   imgElem = null;
   txtElem = null;
 
+  get isReady() {
+    return this.imgElem;
+  }
+
   initTilesDeck() {
-    stateService.state.deckTiles = [];
-    for (let id = 0; id < Tile.TotalNum; id++) {
-      stateService.state.deckTiles.push(id);
+    if (this.isReady) {
+      return; // already initialized
+    }
+
+    if (!stateService.state.deckTiles || !stateService.state.deckTiles.length) {
+      stateService.state.deckTiles = [];
+      for (let id = 0; id < Tile.TotalNum; id++) {
+        stateService.state.deckTiles.push(id);
+      }
     }
 
     this.imgElem = document.createElement("img");

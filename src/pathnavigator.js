@@ -1,4 +1,4 @@
-import * as drawing from "./drawing.js";
+import * as drawing from "./common/drawing.js";
 import {averageColor, isSimilarColor} from "./pathfinder.js";
 import Tile from "./tile-component.js";
 import {log} from "./tsuro.js";

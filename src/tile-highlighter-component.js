@@ -1,11 +1,12 @@
-import {colorArrayToStyle} from "./drawing.js";
+import {colorArrayToStyle} from "./common/drawing.js";
 import Tile from "./tile-component.js";
-import {TilesPos, onPlayerTilePlaced, log, stateService } from "./tsuro.js";
+import {TilesPos, onPlayerTilePlaced, log, contentDiv, makePlayerColorStyle } from "./tsuro.js";
 
 export default class TileHighlighter {
   elem = null;
 
-  constructor(col = -1, row = -1){
+  constructor(client, col = -1, row = -1){
+    this.client = client;
     this.col = col;
     this.row = row;
 
@@ -29,7 +30,7 @@ export default class TileHighlighter {
     if(this.row >= 0) {
       this.elem.style.top = this.row * Tile.size + "px";
     }
-    if (!stateService.playerState.playerTilePlaced && stateService.playerState.playerMeeple && this.col >= 0 && this.row >= 0) {
+    if (!this.client.getPlayerState().playerTilePlaced && this.client.getPlayerState().playerMeeple && this.col >= 0 && this.row >= 0) {
       this.elem.style.display = "inline-block";
     } else {
       this.elem.style.display = "none";
@@ -41,10 +42,6 @@ export default class TileHighlighter {
       this.update();
       return this.elem;
     }
-    const color = [...stateService.playerState.playerColor];
-    const playerColorStyle = colorArrayToStyle(color);
-    color[3] = 128; // semi-transparent
-    const playerColorBgStyle = colorArrayToStyle(color);
     this.elem = document.createElement("div");   // Create a <button> element
     this.elem.style.width = Tile.size +"px";
     this.elem.style.height = Tile.size + "px";
@@ -53,18 +50,18 @@ export default class TileHighlighter {
     this.elem.style.marginLeft = TilesPos.x;
     this.elem.style.marginTop = TilesPos.y;
     //this.elem.style.border = "1px solid red";
-    this.elem.style.boxShadow = "0 0 5px 5px " + playerColorStyle;
-    this.elem.style.backgroundColor = playerColorBgStyle;
+    this.elem.style.boxShadow = "0 0 5px 5px " + makePlayerColorStyle(this.client.id);
+    this.elem.style.backgroundColor = makePlayerColorStyle(this.client.id, 0.5);
     this.elem.onclick = () => {
-      if(!stateService.playerState.playerSelectedTile){
+      if(!this.client.getPlayerState().playerSelectedTile){
         log("select a tile first");
         return;
       }
 
-      stateService.playerState.playerTilePlaced = {c: this.col, r: this.row};
+      this.client.getPlayerState().playerTilePlaced = {c: this.col, r: this.row};
       this.update();
 
-      onPlayerTilePlaced();
+      onPlayerTilePlaced(this.client);
     };
 
     this.update();
@@ -72,6 +69,14 @@ export default class TileHighlighter {
   }
 
   initHighlighter() {
-    content.appendChild(this.element);
+    if (this.element.parentNode !== contentDiv) {
+      contentDiv.appendChild(this.element);
+    }
+
+    this.syncFromState();
+  }
+
+  syncFromState() {
+    this.update();
   }
 }

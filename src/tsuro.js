@@ -1,5 +1,5 @@
-import * as drawing from "./drawing.js";
-import {transitionElement, getElementsOffset, sleep} from "./dom-animator.js";
+import * as drawing from "./common/drawing.js";
+import {transitionElement, getElementsOffset, sleep} from "./common/dom-animator.js";
 import {traversePath, projectToTile} from "./pathnavigator.js";
 import Tile from "./tile-component.js";
 import Meeple from "./meeple-component.js";
@@ -10,10 +10,11 @@ import PlayerTiles from "./player-tiles-component.js";
 import TileHighlighter from "./tile-highlighter-component.js";
 import Prompt from "./prompt-component.js";
 import GameStateService from "./game-state-service.js";
+import Board from "./board-component.js";
 
 // DOM elements
-export const content = document.getElementById('content');
-export const board = document.getElementById('board');
+export const contentDiv = document.getElementById('content');
+//export const board = document.getElementById('board');
 export const tiles = document.getElementById('tiles');
 export const tilesOverlay = document.getElementById('tilesOverlay');
 export const deckArea = document.getElementById('deckArea');
@@ -29,22 +30,26 @@ export const PathSize = 3;
 export const PathColor = [207, 190, 178, 255];
 
 // Create global (per-game) components
-export const tilesDeck = new TilesDeck();
 export const prompt = new Prompt();
+export const tilesDeck = new TilesDeck();
+export const board = new Board();
 
 // Global services
 export const stateService = new GameStateService();
 
 // game entry point
-loadGame().then(() => {
-  log("Starting...");
-  processState();
-}).catch(e => {
-  log("Error: " + e);
-  if (e.stack) {
-    log(e.stack);
-  }
-});
+loadGame()
+  .then(() => {
+    log("Starting game...");
+
+    return stateService.connect();  // get game state and call processState()
+  })
+  .catch(e => {
+    log("Error: " + e);
+    if (e.stack) {
+      log(e.stack);
+    }
+  });
 
 // simple logging
 export function log(text) {
@@ -64,15 +69,55 @@ async function loadGame() {
   await Tile.init();
 
   await Meeple.init();
+}
 
-  prompt.initPrompt();
+// load graphic resources
+function initGameComponents() {
+  if (!prompt.isReady || !tilesDeck.isReady) {
+    log("Initializing game components...");
+
+    // init those only once!
+    prompt.initPrompt();
+    tilesDeck.initTilesDeck();
+  }
+
+  // these are safe to init on every state update
+  board.initBoard();
+
+  //TODO: update previously initialized components from state
+}
+
+function initPlayersComponents() {
+  for (let id = 0; id < stateService.playersTotal; id++) {
+    const client = stateService.getClient(id);
+    if (!client.isReady) {
+      log("Initializing player components for " + client.getPlayerState().playerName + "...");
+
+      // Create client (per-player) components. Do this only once!
+      client.playerMeeple = new PlayerMeeple(client);
+      client.playerTiles = new PlayerTiles(client);
+      client.startingPositions = new StartingPositions(client);
+      client.highlighter = new TileHighlighter(client);
+
+      client.isReady = true;
+    }
+
+    // these are safe to init on every state update
+    client.playerMeeple.initPlayerMeeple();
+    client.startingPositions.initStartingPositions();
+    client.highlighter.initHighlighter();
+
+    //TODO: update previously initialized components from state
+  }
 }
 
 // main state machine
-function processState() {
+export function processState() {
   const state = stateService.state;
 
   if (!stateService.isGameReady) {
+    log("Registering players for TEST only!...");
+
     //#TEST init some dummy players for test only
     stateService.registerPlayer("Mike", Meeple.Colors[0]);
     stateService.registerPlayer("Stephan", Meeple.Colors[1]);
@@ -81,31 +126,24 @@ function processState() {
     stateService.registerPlayer("ppl", Meeple.Colors[4]);
     stateService.registerPlayer("Kevin", Meeple.Colors[5]);
     stateService.registerPlayer("Pascal", Meeple.Colors[6]);
-    //....
-
-    // init global components
-    tilesDeck.initTilesDeck();
 
     state.gameStatus = GameStateService.GameStates.STARTING;
-    log("Players ready");
+    log("Game ready");
+
+    stateService.fireLocalStateUpdated();
     processState();
   } else {
+
+    // sync local UI components based on updated state
+    initGameComponents();
+    initPlayersComponents();
+
     const playerState = stateService.playerState;
     if (!stateService.isPlayerReady) {
-      const client = stateService.client;
-
-      // Create client (per-player) components
-      client.playerMeeple = new PlayerMeeple();
-      client.playerTiles = new PlayerTiles();
-      client.startingPositions = new StartingPositions();
-      client.highlighter = new TileHighlighter();
-
-      // init components right away
-      client.startingPositions.initStartingPositions();
-      client.highlighter.initHighlighter();
-
       playerState.playerStatus = GameStateService.PlayerStates.IDLE;
-      log("Client ready for " + playerState.playerName);
+      log("Player " + playerState.playerName + " ready");
+
+      stateService.fireLocalStateUpdated();
       processState();
     } else {
       onPlayerTurn();
@@ -114,22 +152,25 @@ function processState() {
 }
 
 // player selected starting position. State handler.
-export function onStartPositionSelection(path) {
+export function onStartPositionSelection(client, path) {
   // place player meeple at the start
-  const id = stateService.state.playerTurn;   // player turn is basically index or id of the player and corresponding meeple
-  stateService.client.playerMeeple.initPlayerMeeple(path.x0, path.y0, id, path);
+  const playerState = client.getPlayerState();
+  const id = client.id;   // client id is basically index or id of the player and corresponding meeple id for now
+  client.playerMeeple.makePlayerMeeple(path.x0, path.y0, id, path);
 
   // draw starting position marker
   drawing.canvasDrawCircle(tilesOverlay, path.x0, path.y0, PathSize * 3,
-    [0, 0, 0, 255], stateService.playerState.playerMeeple.color, 2);
-
-  onPlayerTurnEnd();
+    [0, 0, 0, 255], playerState.playerMeeple.color, 2);
 }
 
 // player's turn just ended. State handler.
-export function onPlayerTurnEnd() {
+export function onPlayerTurnEnd(client = stateService.client) {
+  const playerState = client.getPlayerState();
+  playerState.playerTurnsPlayed++;
   if (stateService.playingPlayersTotal) {
+    log("onPlayerTurnEnd; advancing player turn");
     stateService.advancePlayerTurn(false);
+    stateService.fireLocalStateUpdated(); // send local state to host to sync with all clients
     processState();
   } else {
     log("Done.");
@@ -138,12 +179,7 @@ export function onPlayerTurnEnd() {
 
 // player's turn just started. State handler.
 export function onPlayerTurn() {
-  log("onPlayerTurn; playerTurn=" + stateService.state.playerTurn); //#DEBUG
-  // prompt.showPrompt("onPlayerTurn; playerTurn=" + stateService.state.playerTurn); // #TEST
-  // prompt.showPrompt("Game Over. " + makePlayerElm(stateService.state.playerTurn) + " won!", -1);
-  // prompt.showSuccess("Game Over. " + makePlayerElm(stateService.state.playerTurn) + " won!", -1);
-  // prompt.showWarning("Game Over. " + makePlayerElm(stateService.state.playerTurn) + " won!", -1);
-  // prompt.showError("Game Over. " + makePlayerElm(stateService.state.playerTurn) + " won!", -1);
+  log("onPlayerTurn; playerTurn=" + stateService.state.playerTurn + ": " + stateService.playerState.playerName); //#DEBUG
 
   if (!stateService.isPlayerPlaying) {
     onPlayerTurnEnd();
@@ -158,13 +194,13 @@ export function onPlayerTurn() {
 function onPlayerStartingPositionTurn() {
   infoDiv.innerHTML = "Meeple placement turn for " + makePlayerElm(stateService.state.playerTurn);
 
+  stateService.client.startingPositions.update();
+
   stateService.client.playerTiles.initPlayerTiles([]);    // no player tiles yet
 }
 
 // player's normal game flow turn, to play a tile just started. State handler.
 async function onPlayerTileTurn() {
-  stateService.playerState.playerTurnsPlayed++;
-  stateService.playerState.playerPathLength += stateService.playerState.playerMeeple.path.step || 0;
   infoDiv.innerHTML = "Players left: " + stateService.playingPlayersTotal +
     ". Turn: " + stateService.playerState.playerTurnsPlayed + " for " +
     makePlayerElm(stateService.state.playerTurn) +
@@ -187,7 +223,7 @@ async function onPlayerTileTurn() {
   const noMoreTilesToPlay = stateService.isPlayerPlaying && !stateService.playerState.playerTiles.length && !stateService.state.deckTiles.length;
   const lastPlayerPlaying = stateService.isPlayerPlaying && stateService.playingPlayersTotal === 1;
 
-    // if no more tiles left and player has none, then Game Over and this player won.
+  // if no more tiles left and player has none, then Game Over and this player won.
   if (lastPlayerPlaying || noMoreTilesToPlay) {
     log("No tiles left to play or " + stateService.playerState.playerName + " is the last player standing");
     stateService.playerState.playerStatus = GameStateService.PlayerStates.WON;
@@ -202,42 +238,43 @@ async function onPlayerTileTurn() {
 }
 
 // player just placed a tile. State handler.
-export function onPlayerTilePlaced() {
+export function onPlayerTilePlaced(client) {
   // remove placed player tile
-  stateService.client.playerTiles.tilePlayed(stateService.playerState.playerSelectedTile.id);
+  client.playerTiles.tilePlayed(client.getPlayerState().playerSelectedTile.id);
 
   // start tile placement animation
-  let {dx, dy} = getElementsOffset(stateService.client.playerTiles.playerSelectedTileElem, tiles);
-  dx += stateService.playerState.playerTilePlaced.c * Tile.size;
-  dy += stateService.playerState.playerTilePlaced.r * Tile.size;
+  let {dx, dy} = getElementsOffset(client.playerTiles.playerSelectedTileElem, tiles);
+  dx += client.getPlayerState().playerTilePlaced.c * Tile.size;
+  dy += client.getPlayerState().playerTilePlaced.r * Tile.size;
   const animStyle = {
     transition: "all 1s",
     left: dx + "px",
     top: dy + "px"
   };
-  transitionElement(stateService.client.playerTiles.playerSelectedTileElem, animStyle, (ev) => {
+  transitionElement(client.playerTiles.playerSelectedTileElem, animStyle, (ev) => {
     //log("call onTraversePlacedTile() here ")
-    stateService.client.playerTiles.playerSelectedTileElem.style.display = "none";
-    void onTraversePlacedTile();
+    client.playerTiles.playerSelectedTileElem.style.display = "none";
+    void onTraversePlacedTile(client);
   });
 }
 
 // start moving meeples on just played tile. State handler.
-async function onTraversePlacedTile() {
+async function onTraversePlacedTile(client) {
+  const playerState = client.getPlayerState();
   // draw tile image on the board
-  const id = stateService.playerState.playerSelectedTile.id;
-  const rot = Math.PI / 180 * stateService.playerState.playerSelectedTile.rot;
+  const id = playerState.playerSelectedTile.id;
+  const rot = Math.PI / 180 * playerState.playerSelectedTile.rot;
   const tile = new Tile(id, rot);
-  const x = stateService.playerState.playerTilePlaced.c * Tile.size;
-  const y = stateService.playerState.playerTilePlaced.r * Tile.size;
+  const x = playerState.playerTilePlaced.c * Tile.size;
+  const y = playerState.playerTilePlaced.r * Tile.size;
   tiles.getContext("2d").drawImage(tile.image, x, y);
 
   // add placed tile to game state board tiles
   stateService.state.boardTiles.push({
-    c: stateService.playerState.playerTilePlaced.c,
-    r: stateService.playerState.playerTilePlaced.r,
+    c: playerState.playerTilePlaced.c,
+    r: playerState.playerTilePlaced.r,
     id: id,
-    rot: stateService.playerState.playerSelectedTile.rot
+    rot: playerState.playerSelectedTile.rot
   });
 
   const findAffectedPlayers = (tile) => {
@@ -287,10 +324,12 @@ async function onTraversePlacedTile() {
         playerState.playerStatus = GameStateService.PlayerStates.PLAYING;
       }
     });
+
+    playerState.playerPathLength += playerState.playerMeeple.path.step || 0;
   };
 
   // find out which players were affected by placing current tile
-  const ids = findAffectedPlayers(stateService.playerState.playerTilePlaced);
+  const ids = findAffectedPlayers(playerState.playerTilePlaced);
   // start traversing new tile paths for all affected players
   const promises = [];
   ids.forEach(id => {
@@ -299,7 +338,7 @@ async function onTraversePlacedTile() {
 
   await Promise.all(promises);
 
-  onPlayerTurnEnd();
+  onPlayerTurnEnd(client);
 }
 
 // check if given path moves out of bound of game board - player lost
@@ -333,8 +372,16 @@ async function onPlayerDone(id) {
   }
 }
 
-export function makePlayerElm(id){
+export function makePlayerColorStyle(id, opacity = 1) {
   const playerState = stateService.getPlayerState(id);
-  const playerColorStyle = drawing.colorArrayToStyle(playerState.playerColor);
-  return "<span style='color: " + playerColorStyle + "'; font-weight: bolder;>" + playerState.playerName + "</span>";
+  const color = [...playerState.playerColor];
+  color[3] = Math.round(255 * opacity);
+  return drawing.colorArrayToStyle(color);
 }
+
+export function makePlayerElm(id) {
+  const playerState = stateService.getPlayerState(id);
+  const playerColorStyle = makePlayerColorStyle(id);
+  return "<span style='color: " + playerColorStyle + "; font-weight: bolder;'>" + playerState.playerName + "</span>";
+}
+

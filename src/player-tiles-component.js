@@ -1,6 +1,6 @@
-import {colorArrayToStyle} from "./drawing.js";
+import {colorArrayToStyle} from "./common/drawing.js";
 import Tile from "./tile-component.js";
-import {tilesDeck, stateService, log } from "./tsuro.js";
+import {tilesDeck, playerArea, log } from "./tsuro.js";
 
 const ccwBtnImgSrc = "img/ccw_btn_1.png";
 const cwBtnImgSrc = "img/cw_btn_1.png";
@@ -9,8 +9,13 @@ export default class PlayerTiles {
   playerSelectedTileElem = null;
   playerTilesElems = [];
 
+  constructor(client) {
+    this.client = client;
+  }
+
   update() {
-    const color = stateService.playerState.playerColor;
+    const playerState = this.client.getPlayerState();
+    const color = playerState.playerColor;
     const playerColorStyle = colorArrayToStyle(color);
     this.playerTilesElems.forEach((el) => {
       if (this.playerSelectedTileElem === el) {
@@ -22,29 +27,32 @@ export default class PlayerTiles {
   }
 
   selectTile(elem) {
+    const playerState = this.client.getPlayerState();
     if (elem) {
       this.playerSelectedTileElem = elem;
-      stateService.playerState.playerSelectedTile = {id: elem.tile.id, rot: elem.rot};
+      playerState.playerSelectedTile = {id: elem.tile.id, rot: elem.rot};
     } else {
       this.playerSelectedTileElem = null;
-      stateService.playerState.playerSelectedTile = null;
+      playerState.playerSelectedTile = null;
     }
     this.update();
   }
 
   // remove placed player tile
   tilePlayed(id) {
-    let idx = stateService.playerState.playerTiles.findIndex((t) => t === id);
+    const playerState = this.client.getPlayerState();
+    let idx = playerState.playerTiles.findIndex((t) => t === id);
     let elem = this.playerTilesElems.splice(idx, 1)[0];
-    stateService.playerState.playerTiles.splice(idx, 1);
+    playerState.playerTiles.splice(idx, 1);
     elem.dependantElements.forEach(el => el.style.display = "none");
     return idx;
   }
 
   async initPlayerTiles(ids = [null, null, null]) {
+    const playerState = this.client.getPlayerState();
     playerArea.innerHTML = "";
     this.playerTilesElems = [];
-    stateService.playerState.playerTiles = [];
+    playerState.playerTiles = [];
 
     const makeBtn = (tileElem, txt) => {
       //const elem = document.createElement("button");
@@ -93,8 +101,9 @@ export default class PlayerTiles {
         }
       };
       this.playerTilesElems.push(elem);
-      stateService.playerState.playerTiles.push(id);
+      playerState.playerTiles.push(id);
       const tileDiv = document.createElement("div");
+      tileDiv.style.whiteSpace="nowrap";
       let btn1 = makeBtn(elem, "CCW");
       let btn2 = makeBtn(elem, "CW");
       elem.dependantElements = [btn1, btn2];
