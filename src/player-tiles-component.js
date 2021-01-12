@@ -1,6 +1,6 @@
-import {colorArrayToStyle} from "./common/drawing.js";
+import {arrayEquals} from "./common/differ.js";
 import Tile from "./tile-component.js";
-import {tilesDeck, playerArea, log } from "./tsuro.js";
+import {tilesDeck, playerArea, log , makePlayerColorStyle, stateService} from "./tsuro.js";
 
 const ccwBtnImgSrc = "img/ccw_btn_1.png";
 const cwBtnImgSrc = "img/cw_btn_1.png";
@@ -15,14 +15,16 @@ export default class PlayerTiles {
 
   update() {
     const playerState = this.client.getPlayerState();
-    const color = playerState.playerColor;
-    const playerColorStyle = colorArrayToStyle(color);
     this.playerTilesElems.forEach((el) => {
       if (this.playerSelectedTileElem === el) {
-        el.style.boxShadow = "0 0 5px 5px " + playerColorStyle;
+        el.style.boxShadow = "0 0 5px 5px " + makePlayerColorStyle(this.client.id);
       } else {
         el.style.boxShadow = "";
       }
+      const show = this.client.isPlayerTurn();
+      el.style.display = show ? "inline-block" : "none";
+      const rotate = show && stateService.isMyTurn;
+      el.dependantElements.forEach(el => el.style.visibility = rotate ? "visible" : "hidden");
     });
   }
 
@@ -38,7 +40,14 @@ export default class PlayerTiles {
     this.update();
   }
 
-  // remove placed player tile
+  rotateTile(elem, rot){
+    elem.rot = rot;
+    elem.style.transitionDuration = "0.8s";
+    elem.style.transitionProperty = "transform";
+    elem.style.transform = "rotate(" + elem.rot + "deg)";
+  }
+
+  // remove placed player tile from player state
   tilePlayed(id) {
     const playerState = this.client.getPlayerState();
     let idx = playerState.playerTiles.findIndex((t) => t === id);
@@ -48,7 +57,17 @@ export default class PlayerTiles {
     return idx;
   }
 
-  async initPlayerTiles(ids = [null, null, null]) {
+  removePlayedTile() {
+    if (!this.playerSelectedTileElem) {
+      return;
+    }
+    this.playerSelectedTileElem.style.display = "none";
+    this.playerSelectedTileElem.dependantElements.forEach(el => el.style.display = "none");
+    this.playerSelectedTileElem.parentElement.remove();
+    this.playerSelectedTileElem = null;
+  }
+
+  async init(ids = [null, null, null]) {
     const playerState = this.client.getPlayerState();
     playerArea.innerHTML = "";
     this.playerTilesElems = [];
@@ -68,16 +87,14 @@ export default class PlayerTiles {
       elem.style.margin = "5px";
       tileElem.rot = 0;
       elem.onclick = () => {
+        if (!stateService.isMyTurn) {
+          log("it is not your turn!");
+          return;
+        }
         if (txt === "CCW") {
-          tileElem.rot -= 90;
-          tileElem.style.transitionDuration = "0.8s";
-          tileElem.style.transitionProperty = "transform";
-          tileElem.style.transform = "rotate(" + tileElem.rot + "deg)";
+          this.rotateTile(tileElem, tileElem.rot - 90);
         } else {
-          tileElem.rot += 90;
-          tileElem.style.transitionDuration = "0.8s";
-          tileElem.style.transitionProperty = "transform";
-          tileElem.style.transform = "rotate(" + tileElem.rot + "deg)";
+          this.rotateTile(tileElem, tileElem.rot + 90);
         }
         this.selectTile(tileElem);
       };
@@ -94,6 +111,11 @@ export default class PlayerTiles {
       elem.style.top = "0px"; // for css transitions to work
       elem.rot = 0;
       elem.onclick = () => {
+        if (!stateService.isMyTurn) {
+          log("it is not your turn!");
+          return;
+        }
+
         if (this.playerSelectedTileElem === elem) {
           this.selectTile(null);
         } else {
@@ -132,6 +154,18 @@ export default class PlayerTiles {
 
     await Promise.all(promises);
 
+    this.syncFromState();
     this.update();
+  }
+
+  syncFromState(playerState = this.client.getPlayerState()) {
+    const id = playerState.playerSelectedTile ? playerState.playerSelectedTile.id : null;
+    const rot = playerState.playerSelectedTile ? playerState.playerSelectedTile.rot : 0;
+    this.playerTilesElems.forEach((el) => {
+      if (el.tile.id === id) {
+        this.rotateTile(el, rot);
+        this.playerSelectedTileElem = el;
+      }
+    });
   }
 }

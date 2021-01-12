@@ -1,6 +1,6 @@
 export default class API {
-  //static HOST_LOCATION = '';                // <- release
-  static HOST_LOCATION = 'ghost:8181';        // <- development (beta)
+  static HOST_LOCATION = 'gerdov.com';                // <- release
+  //static HOST_LOCATION = 'ghost:8181';        // <- development (beta)
   //static HOST_LOCATION = 'localhost:8181';  // <- development (alpha)
   static HOST_API_KEY = 'TSURO53cr3tK3y';
   static HOST_DB_NAME = ':memory:tsuro-';

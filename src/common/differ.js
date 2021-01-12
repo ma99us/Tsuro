@@ -62,7 +62,10 @@ export function diffChildKeys(diffs, prefix, depth = 1) {
   const diffKeys = new Set();
   for (let [k, v] of diffs) {
     if (k.startsWith(prefix)) {
-      const remPath = k.substring(prefix.length);
+      let remPath = k.substring(prefix.length);
+      if (remPath.startsWith('.')) {
+        remPath = remPath.substring(1);   // ignore empty chunk
+      }
       diffKeys.add(subPath(remPath, depth));
     }
   }
@@ -77,4 +80,7 @@ export function mapToObj(map) {
     obj[k] = v;
   }
   return obj
+}
+export function arrayEquals(array1, array2){
+  return array1.length === array2.length && array1.every((value, index) => value === array2[index]);
 }

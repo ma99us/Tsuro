@@ -1,0 +1,160 @@
+/*old phones*/
+@media only screen
+and (max-device-width: 320px) {
+    body {
+        zoom: 0.3;
+    }
+}
+
+/*iPhone*/
+@media only screen
+and (min-device-width: 321px)
+and (max-device-width: 667px)
+and (orientation: landscape) {
+    body {
+        zoom: 0.38;
+    }
+}
+
+/*iPhone Plus*/
+@media only screen
+and (min-device-width: 668px)
+and (max-device-width: 736px)
+and (orientation: landscape) {
+    body {
+        zoom: 0.45;
+    }
+}
+
+/*iSurface Duo*/
+@media only screen
+and (min-device-width: 720px)
+and (max-device-width: 720px)
+and (max-device-height: 540px)
+and (orientation: landscape) {
+    body {
+        zoom: 0.55;
+    }
+}
+
+/*Nexus 7 landscape*/
+@media only screen
+and (min-device-width: 737px)
+and (max-device-width: 960px)
+and (orientation: landscape) {
+    body {
+        zoom: 0.65;
+    }
+}
+
+/*Nexus 7 portrait*/
+@media only screen
+and (min-device-height: 737px)
+and (max-device-height: 960px)
+and (orientation: portrait) {
+    body {
+        zoom: 0.50;
+    }
+}
+
+/*iPad landscape*/
+@media only screen
+and (min-device-width: 961px)
+and (max-device-width: 1024px)
+and (orientation: landscape) {
+    body {
+        zoom: 0.8;
+    }
+}
+
+/*iPad portrait*/
+@media only screen
+and (min-device-height: 1024px)
+and (max-device-height: 1024px)
+and (orientation: portrait) {
+    body {
+        zoom: 0.65;
+    }
+}
+
+/*Nexus 10 landscape*/
+@media only screen
+and (min-device-width: 1025px)
+and (max-device-width: 1280px)
+and (orientation: landscape) {
+    body {
+        zoom: 0.85;
+    }
+}
+
+/*Nexus 10 portrait*/
+@media only screen
+and (min-device-height: 1025px)
+and (max-device-height: 1280px)
+and (orientation: portrait) {
+    body {
+        zoom: 0.65;
+    }
+}
+
+
+/*iPad Pro landscape*/
+@media only screen
+and (min-device-width: 1281px)
+and (max-device-width: 1366px)
+and (orientation: landscape) {
+    body {
+        zoom: 1.1;
+    }
+}
+
+/*iPad Pro portrait*/
+@media only screen
+and (min-device-height: 1281px)
+and (max-device-height: 1366px)
+and (orientation: portrait) {
+    body {
+        zoom: 0.85;
+    }
+}
+
+
+/*iPad Pro 10 inch*/
+@media only screen
+and (min-device-width: 2000px)
+and (max-device-width: 2224px)
+and (orientation: landscape) {
+    body {
+        zoom: 1.8;
+    }
+}
+
+/*iPad Pro 12 inch*/
+@media only screen
+and (min-device-width: 2225px)
+and (max-device-width: 2732px)
+and (orientation: landscape) {
+    body {
+        zoom: 2.2;
+    }
+}
+
+/*iPad Pro 10 inch  portrait*/
+@media only screen
+and (min-device-height: 1367px)
+and (max-device-height: 2224px)
+and (orientation: portrait) {
+    body {
+        zoom: 1.35;
+    }
+}
+
+/*iPad Pro 12 inch tablet portrait*/
+@media only screen
+and (min-device-height: 2225px)
+and (max-device-height: 3000px)
+and (orientation: portrait) {
+    body {
+        zoom: 1.65;
+    }
+}

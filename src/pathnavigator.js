@@ -1,22 +1,10 @@
 import * as drawing from "./common/drawing.js";
 import {averageColor, isSimilarColor} from "./pathfinder.js";
 import Tile from "./tile-component.js";
-import {log} from "./tsuro.js";
-import {tilesOverlay} from "./tsuro";
+import {log, tilesOverlay} from "./tsuro.js";
 
 const DEBUG_PATH = false;  // show more info about path finding
 const StopPixel = [0,0,0,0];  // stop path finding immediately if encountered such pixels
-
-// calculate the "difference" between the two colors
-function getColorDiff(px1, px2) {
-  if (!px1 || !px2) {
-    return 255;
-  }
-  return (Math.abs(px1[0] - px2[0]) +
-    Math.abs(px1[1] - px2[1]) +
-    Math.abs(px1[2] - px2[2]) +
-    Math.abs(px1[3] - px2[3])) / 4;
-}
 
 // traverse path found in 'metaInfo' one by one
 async function traversePaths(canvas) {
@@ -130,7 +118,7 @@ export async function traversePath(canvas, path, dir, func = null) {
     let mostSimilarSeg = null;
     let mostSimilarSegDelta = Number.MAX_SAFE_INTEGER;
     for (let i = 0; i < segs.length; i++) {
-      let colorDiff = getColorDiff(path.color, segs[i].color);
+      let colorDiff = drawing.getColorDiff(path.color, segs[i].color);
       let dirDiff = 5 * segs[i].dirFactor; // FIXME: hardcoded?
       let diff = colorDiff + dirDiff;
       //if (isSimilarColor(path.color, segs[i].color, 70) && colorDiff < mostSimilarSegDelta) { // FIXME: hardcoded?

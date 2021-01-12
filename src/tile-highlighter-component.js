@@ -1,6 +1,5 @@
-import {colorArrayToStyle} from "./common/drawing.js";
 import Tile from "./tile-component.js";
-import {TilesPos, onPlayerTilePlaced, log, contentDiv, makePlayerColorStyle } from "./tsuro.js";
+import {TilesPos, onPlayerTilePlaced, log, gameDiv, makePlayerColorStyle, stateService } from "./tsuro.js";
 
 export default class TileHighlighter {
   elem = null;
@@ -30,11 +29,18 @@ export default class TileHighlighter {
     if(this.row >= 0) {
       this.elem.style.top = this.row * Tile.size + "px";
     }
-    if (!this.client.getPlayerState().playerTilePlaced && this.client.getPlayerState().playerMeeple && this.col >= 0 && this.row >= 0) {
-      this.elem.style.display = "inline-block";
-    } else {
-      this.elem.style.display = "none";
-    }
+
+    const show = this.client.isPlayerTurn() && !this.client.getPlayerState().playerTilePlaced && this.client.getPlayerState().playerMeeple && this.col >= 0 && this.row >= 0;
+    this.elem.style.display = show ? "inline-block" : "none";
+  }
+
+  async placeTile() {
+    const playerState = this.client.getPlayerState();
+
+    playerState.playerTilePlaced = {c: this.col, r: this.row};
+    this.update();
+
+    await onPlayerTilePlaced(this.client);
   }
 
   get element() {
@@ -52,25 +58,28 @@ export default class TileHighlighter {
     //this.elem.style.border = "1px solid red";
     this.elem.style.boxShadow = "0 0 5px 5px " + makePlayerColorStyle(this.client.id);
     this.elem.style.backgroundColor = makePlayerColorStyle(this.client.id, 0.5);
-    this.elem.onclick = () => {
-      if(!this.client.getPlayerState().playerSelectedTile){
+    this.elem.onclick = async () => {
+      if (!stateService.isMyTurn) {
+        log("it is not your turn!");
+        return;
+      }
+
+      const playerState = this.client.getPlayerState();
+      if(!playerState.playerSelectedTile){
         log("select a tile first");
         return;
       }
 
-      this.client.getPlayerState().playerTilePlaced = {c: this.col, r: this.row};
-      this.update();
-
-      onPlayerTilePlaced(this.client);
+      await this.placeTile();
     };
 
     this.update();
     return this.elem;
   }
 
-  initHighlighter() {
-    if (this.element.parentNode !== contentDiv) {
-      contentDiv.appendChild(this.element);
+  init() {
+    if (this.element.parentNode !== gameDiv) {
+      gameDiv.appendChild(this.element);
     }
 
     this.syncFromState();

@@ -27,7 +27,7 @@ export default class HostStorageService {
       let protocol = 'ws' + (window.location.protocol === 'https' ? 's' : '');
       socketUrl = protocol + '://' + window.location.hostname + (window.location.port ? ':' + window.location.port : '') + url;
     }
-    console.log("--- socket open");
+    //console.log("--- socket open");
     this.dataStream = new WebSocket(socketUrl);
     this.dataStream.onmessage = (message) => {
       if (message.data === 'PONG') {
@@ -95,7 +95,7 @@ export default class HostStorageService {
     }
 
     if (event.event === "NEW" && event.sessionId) {
-      console.log("--- new session id: " + event.sessionId);
+      console.log("-- new session id: " + event.sessionId);
       this.setSessionId(event.sessionId);
       this.notify('session-event', event);
     } else if (event.event === 'OPENED') {
@@ -109,8 +109,8 @@ export default class HostStorageService {
       this.notify('session-event', event);
     } else if (event.event) {
       //console.log(message);
-      console.log("-- DB event " + event.event + " for key=" + event.key + " from session id: " + event.sessionId);
       if (this.sessionId && this.sessionId !== event.sessionId) {   // ignore our own db updates notifications
+        console.log("-- DB event " + event.event + " for key=" + event.key + " from session id: " + event.sessionId);
         this.notify('db-event', event);
       }
     } else {
@@ -175,7 +175,11 @@ export default class HostStorageService {
    */
   validateResponse(response) {
     if (response && (response.status === 200 || response.status === 201)) {
-      return response.json(); // resource exists or was created
+      // resource exists or was created
+      return response.text()
+        .then((data) => {
+          return data ? JSON.parse(data) : null;
+        });
     }
     else if (response && (response.status === 204)) {
       return null;   // resource is empty
@@ -243,6 +247,8 @@ export default class HostStorageService {
   set(key, value, dbName = null) {
     const url = this.getApiUrl(dbName);
 
+    console.log(">>> DB '" + url + "' SET for key=" + key);  // #DEBUG
+
     let retry = 0;
     const request = () => {
       return fetch(url + key, {
@@ -281,6 +287,8 @@ export default class HostStorageService {
     if (!Array.isArray(value)) {
       value = [value];    // value has to be an array
     }
+
+    console.log(">>> DB '" + url + "' ADD for key=" + key);  // #DEBUG
 
     let retry = 0;
     const request = () => {
@@ -321,6 +329,8 @@ export default class HostStorageService {
       maxResults: maxResults
     });
 
+    console.log(">>> DB '" + url + "' GET for key=" + key);  // #DEBUG
+
     let retry = 0;
     const request = () => {
       return fetch(urlParam, {
@@ -351,6 +361,8 @@ export default class HostStorageService {
   count(key, dbName = null) {
     const url = this.getApiUrl(dbName);
 
+    console.log(">>> DB '" + url + "' COUNT for key=" + key);  // #DEBUG
+
     let retry = 0;
     const request = () => {
       return fetch(url, {
@@ -358,40 +370,6 @@ export default class HostStorageService {
         headers: this.prepareHeaders()
       }).then(response => {
         response.data = response.headers.get('Content-Length');
-        return this.validateResponse(response);
-      }).catch(err => {
-        if (retry < self.MAX_RETRIES) {
-          retry++;
-          this.onRetry(retry);
-
-          request();  // recursion for re-tries
-        } else {
-          this.validateResponse(err);
-        }
-      });
-    };
-
-    return request();
-  }
-
-  /**
-   * Delete a record with given Key, or a single value from record's value list by it's id or by index if provided
-   */
-  delete(key, id, index = null, dbName = null) {
-    const url = this.getApiUrl(dbName);
-
-    const urlParam = new URL(url + key);
-    urlParam.search = new URLSearchParams({
-      id: id,
-      index: index
-    });
-
-    let retry = 0;
-    const request = () => {
-      return fetch(urlParam, {
-        method: 'DELETE',
-        headers: this.prepareHeaders()
-      }).then(response => {
         return this.validateResponse(response);
       }).catch(err => {
         if (retry < self.MAX_RETRIES) {
@@ -418,6 +396,8 @@ export default class HostStorageService {
       throw "'update' does not support 'index' on this client";
     }
 
+    console.log(">>> DB '" + url + "' UPDATE for key=" + key);  // #DEBUG
+
     const urlParam = new URL(url + key);
     // urlParam.search = new URLSearchParams({
     //   index: index
@@ -427,6 +407,43 @@ export default class HostStorageService {
     const request = () => {
       return fetch(urlParam, {
         method: 'PATCH',
+        headers: this.prepareHeaders(value),
+        body: this.prepareBody(value)
+      }).then(response => {
+        return this.validateResponse(response);
+      }).catch(err => {
+        if (retry < self.MAX_RETRIES) {
+          retry++;
+          this.onRetry(retry);
+
+          request();  // recursion for re-tries
+        } else {
+          this.validateResponse(err);
+        }
+      });
+    };
+
+    return request();
+  }
+
+  /**
+   * Delete a record with given Key, or a single value from record's value list by it's id or by index if provided
+   */
+  delete(key, value, id = null, index = null, dbName = null) {
+    const url = this.getApiUrl(dbName);
+
+    const urlParam = new URL(url + key);
+    // urlParam.search = new URLSearchParams({
+    //   id: id,
+    //   index: index
+    // });
+
+    console.log(">>> DB '" + url + "' DELETE for key=" + key);  // #DEBUG
+
+    let retry = 0;
+    const request = () => {
+      return fetch(urlParam, {
+        method: 'DELETE',
         headers: this.prepareHeaders(),
         body: this.prepareBody(value)
       }).then(response => {

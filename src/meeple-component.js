@@ -1,10 +1,14 @@
+import {arrFindMostSimilarIndex} from "./common/statistics.js";
+import {colorArrayToStyle, getColorStylesDiff} from "./common/drawing.js";
+
 const MeepleMapImgSrc = "img/meeple_3.png";
 
 export default class Meeple {
   static MappingCols = 9;
   static MappingRows = 1;
   static Colors = [[226,55,46,255], [46,226,129,255], [46,193,226,255], [226,208,46,255],
-    [122,122,122,255], [190,46,226,255], [50,46,226,255], [101,101,101,255]];
+    [61,61,61,255], [190,46,226,255], [50,46,226,255], [191,191,191,255]];
+  static TotalNum = Meeple.Colors.length;
   static BlankID = Meeple.MappingCols - 1;
 
   static width = null;
@@ -37,6 +41,10 @@ export default class Meeple {
 
   static get size() {
     return Math.max(Meeple.width, Meeple.height);
+  }
+
+  static findMeepleIdForColorStyle(clrStyle) {
+    return arrFindMostSimilarIndex(Meeple.Colors, (clr) => getColorStylesDiff(colorArrayToStyle(clr), clrStyle));
   }
 
   get color() {

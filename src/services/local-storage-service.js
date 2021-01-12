@@ -1,9 +1,14 @@
 export default class LocalStorageService {
 
+  constructor(prefix = null) {
+    this.prefix = prefix;
+  }
+
   set(key, value) {
     if (typeof key !== 'string') {
       throw "'key' must be a string";
     }
+    key = this.prefix ? this.prefix + '.' + key : key;
     value = LocalStorageService.tryJsonStringify(value);
     window.localStorage.setItem(key, value);
   }
@@ -12,6 +17,7 @@ export default class LocalStorageService {
     if (typeof key !== 'string') {
       throw "'key' must be a string";
     }
+    key = this.prefix ? this.prefix + '.' + key : key;
     let value = window.localStorage.getItem(key);
     value = LocalStorageService.tryJsonParse(value);
     return value || defaultValue;
@@ -40,7 +46,7 @@ export default class LocalStorageService {
     try {
       return JSON.parse(str);
     } catch (e) {
-      return null;
+      return str;
     }
   }
 

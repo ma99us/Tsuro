@@ -1,5 +1,6 @@
 const  path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyPlugin = require("copy-webpack-plugin");
 
 module.exports = {
   entry: ['babel-polyfill', './src/tsuro.js'],
@@ -30,6 +31,12 @@ module.exports = {
     ]
   },
   plugins: [
+    new CopyPlugin({
+      patterns: [
+        { from: "*.css", to: path.resolve(__dirname, 'build') },
+        { from: "*.html", to: path.resolve(__dirname, 'build') }
+      ],
+    }),
     new HtmlWebpackPlugin({
       template: './index.html'
     })

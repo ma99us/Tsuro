@@ -1,11 +1,11 @@
 // wrapper for all image paths analysis data
-let metaInfo = {};
+let PathFinderMetaInfo = {};
 
 export const DIR = {TOP: Math.PI*3/2, RIGHT: 0, BOTTOM: Math.PI/2, LEFT: Math.PI};  // general directions
 
 // checks if the two colors are somewhat similar
-// by default use metaInfo.delta value
-export function isSimilarColor(px1, px2, delta = metaInfo.delta) {
+// by default use PathFinderMetaInfo.delta value
+export function isSimilarColor(px1, px2, delta = PathFinderMetaInfo.delta) {
   if (!px1 || !px2) {
     return false;
   }
@@ -56,11 +56,11 @@ export function averageColor(colors, skipTransparent = true) {
 function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize = 2) {
   log("Finding paths and edges...");
 
-  metaInfo = {};
-  metaInfo.delta = sensetivity;
-  metaInfo.borderOffset = borderOffset;
+  PathFinderMetaInfo = {};
+  PathFinderMetaInfo.delta = sensetivity;
+  PathFinderMetaInfo.borderOffset = borderOffset;
   minPathSize = minPathSize >= 2 ? minPathSize : 2;   // path can't be smaller then 2 pixels
-  metaInfo.minPathSize = minPathSize;
+  PathFinderMetaInfo.minPathSize = minPathSize;
 
   // add given pixel to the current segment or start a new segment
   const processPixel = (offset, px, stat) => {
@@ -98,12 +98,12 @@ function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize 
     if (!stat.segments) {
       return null;
     }
-    //let mostSize = metaInfo.pathSize || null; // use previously found path size
+    //let mostSize = PathFinderMetaInfo.pathSize || null; // use previously found path size
     let mostSize = null;
     let mostSizeNum = 0;
-    //let mostColor = metaInfo.pathColor || null; //[0,0,0,0]; // use previously found path color
+    //let mostColor = PathFinderMetaInfo.pathColor || null; //[0,0,0,0]; // use previously found path color
     let mostColor = null;
-    //if (!metaInfo.pathSize || !metaInfo.pathColor) {
+    //if (!PathFinderMetaInfo.pathSize || !PathFinderMetaInfo.pathColor) {
       for (let size of stat.segments.keys()) {
         let segs = stat.segments.get(size);
         if (segs.length > mostSizeNum) {
@@ -180,16 +180,16 @@ function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize 
     if (size) {
       //if (similarPaths(lastPixelStat.paths, pixelStat.paths)) {
       {
-        metaInfo.pathSize = pixelStat.pathSize;
-        metaInfo.topEdge = pixelStat.edgeOffset;
-        metaInfo.topPaths = [...pixelStat.paths];
-        metaInfo.pathColor = pixelStat.pathColor;
+        PathFinderMetaInfo.pathSize = pixelStat.pathSize;
+        PathFinderMetaInfo.topEdge = pixelStat.edgeOffset;
+        PathFinderMetaInfo.topPaths = [...pixelStat.paths];
+        PathFinderMetaInfo.pathColor = pixelStat.pathColor;
 
-        log("found top edge; offset=" + metaInfo.topEdge + ", path width=" + metaInfo.pathSize + ", paths num=" + metaInfo.topPaths.length + ", path color=" + metaInfo.pathColor);
+        log("found top edge; offset=" + PathFinderMetaInfo.topEdge + ", path width=" + PathFinderMetaInfo.pathSize + ", paths num=" + PathFinderMetaInfo.topPaths.length + ", path color=" + PathFinderMetaInfo.pathColor);
         // draw info overlay
-        canvasDrawLine(tilesOverlay, 0, metaInfo.topEdge, canvas.width, metaInfo.topEdge);
-        for (let i = 0; i < metaInfo.topPaths.length; i++) {
-          canvasDrawCircle(tilesOverlay, metaInfo.topPaths[i].offset, metaInfo.topEdge, metaInfo.pathSize, [0, 0xff, 0, 0xff], metaInfo.topPaths[i].color);
+        canvasDrawLine(tilesOverlay, 0, PathFinderMetaInfo.topEdge, canvas.width, PathFinderMetaInfo.topEdge);
+        for (let i = 0; i < PathFinderMetaInfo.topPaths.length; i++) {
+          canvasDrawCircle(tilesOverlay, PathFinderMetaInfo.topPaths[i].offset, PathFinderMetaInfo.topEdge, PathFinderMetaInfo.pathSize, [0, 0xff, 0, 0xff], PathFinderMetaInfo.topPaths[i].color);
         }
         break;
       }
@@ -202,7 +202,7 @@ function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize 
       y++;
     }
   }
-  if (!(metaInfo.topEdge >= 0)) {
+  if (!(PathFinderMetaInfo.topEdge >= 0)) {
     log("top edge not found");
   }
 
@@ -221,16 +221,16 @@ function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize 
     if (size) {
       // if (similarPaths(lastPixelStat.paths, pixelStat.paths)) {
       {
-        metaInfo.pathSize = pixelStat.pathSize;
-        metaInfo.rigthEdge = pixelStat.edgeOffset;
-        metaInfo.rightPaths = [...pixelStat.paths];
-        metaInfo.pathColor = pixelStat.pathColor;
+        PathFinderMetaInfo.pathSize = pixelStat.pathSize;
+        PathFinderMetaInfo.rigthEdge = pixelStat.edgeOffset;
+        PathFinderMetaInfo.rightPaths = [...pixelStat.paths];
+        PathFinderMetaInfo.pathColor = pixelStat.pathColor;
 
-        log("found right edge; offset=" + metaInfo.rigthEdge + ", path width=" + metaInfo.pathSize + ", paths num=" + metaInfo.rightPaths.length + ", path color=" + metaInfo.pathColor);
+        log("found right edge; offset=" + PathFinderMetaInfo.rigthEdge + ", path width=" + PathFinderMetaInfo.pathSize + ", paths num=" + PathFinderMetaInfo.rightPaths.length + ", path color=" + PathFinderMetaInfo.pathColor);
         // draw info overlay
-        canvasDrawLine(tilesOverlay, metaInfo.rigthEdge, 0, metaInfo.rigthEdge, canvas.height);
-        for (let i = 0; i < metaInfo.rightPaths.length; i++) {
-          canvasDrawCircle(tilesOverlay, metaInfo.rigthEdge, metaInfo.rightPaths[i].offset, metaInfo.pathSize, [0, 0xff, 0, 0xff], metaInfo.rightPaths[i].color);
+        canvasDrawLine(tilesOverlay, PathFinderMetaInfo.rigthEdge, 0, PathFinderMetaInfo.rigthEdge, canvas.height);
+        for (let i = 0; i < PathFinderMetaInfo.rightPaths.length; i++) {
+          canvasDrawCircle(tilesOverlay, PathFinderMetaInfo.rigthEdge, PathFinderMetaInfo.rightPaths[i].offset, PathFinderMetaInfo.pathSize, [0, 0xff, 0, 0xff], PathFinderMetaInfo.rightPaths[i].color);
         }
         break;
       }
@@ -243,7 +243,7 @@ function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize 
       x--;
     }
   }
-  if (!(metaInfo.rigthEdge >= 0)) {
+  if (!(PathFinderMetaInfo.rigthEdge >= 0)) {
     log("right edge not found");
   }
 
@@ -261,16 +261,16 @@ function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize 
     if (size) {
       //if (similarPaths(lastPixelStat.paths, pixelStat.paths)) {
       {
-        metaInfo.pathSize = pixelStat.pathSize;
-        metaInfo.bottomEdge = pixelStat.edgeOffset;
-        metaInfo.bottomPaths = [...pixelStat.paths];
-        metaInfo.pathColor = pixelStat.pathColor;
+        PathFinderMetaInfo.pathSize = pixelStat.pathSize;
+        PathFinderMetaInfo.bottomEdge = pixelStat.edgeOffset;
+        PathFinderMetaInfo.bottomPaths = [...pixelStat.paths];
+        PathFinderMetaInfo.pathColor = pixelStat.pathColor;
 
-        log("found bottom edge; offset=" + metaInfo.bottomEdge + ", path width=" + metaInfo.pathSize + ", paths num=" + metaInfo.bottomPaths.length + ", path color=" + metaInfo.pathColor);
+        log("found bottom edge; offset=" + PathFinderMetaInfo.bottomEdge + ", path width=" + PathFinderMetaInfo.pathSize + ", paths num=" + PathFinderMetaInfo.bottomPaths.length + ", path color=" + PathFinderMetaInfo.pathColor);
         // draw info overlay
-        canvasDrawLine(tilesOverlay, 0, metaInfo.bottomEdge, canvas.width, metaInfo.bottomEdge);
-        for (let i = 0; i < metaInfo.bottomPaths.length; i++) {
-          canvasDrawCircle(tilesOverlay, metaInfo.bottomPaths[i].offset, metaInfo.bottomEdge, metaInfo.pathSize, [0, 0xff, 0, 0xff], metaInfo.bottomPaths[i].color);
+        canvasDrawLine(tilesOverlay, 0, PathFinderMetaInfo.bottomEdge, canvas.width, PathFinderMetaInfo.bottomEdge);
+        for (let i = 0; i < PathFinderMetaInfo.bottomPaths.length; i++) {
+          canvasDrawCircle(tilesOverlay, PathFinderMetaInfo.bottomPaths[i].offset, PathFinderMetaInfo.bottomEdge, PathFinderMetaInfo.pathSize, [0, 0xff, 0, 0xff], PathFinderMetaInfo.bottomPaths[i].color);
         }
         break;
       }
@@ -283,7 +283,7 @@ function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize 
       y--;
     }
   }
-  if (!(metaInfo.bottomEdge >= 0)) {
+  if (!(PathFinderMetaInfo.bottomEdge >= 0)) {
     log("bottom edge not found");
   }
 
@@ -301,16 +301,16 @@ function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize 
     if (size) {
       //if (similarPaths(lastPixelStat.paths, pixelStat.paths)) {
       {
-        metaInfo.pathSize = pixelStat.pathSize;
-        metaInfo.leftEdge = pixelStat.edgeOffset;
-        metaInfo.leftPaths = [...pixelStat.paths];
-        metaInfo.pathColor = pixelStat.pathColor;
+        PathFinderMetaInfo.pathSize = pixelStat.pathSize;
+        PathFinderMetaInfo.leftEdge = pixelStat.edgeOffset;
+        PathFinderMetaInfo.leftPaths = [...pixelStat.paths];
+        PathFinderMetaInfo.pathColor = pixelStat.pathColor;
 
-        log("found left edge; offset=" + metaInfo.leftEdge + ", path width=" + metaInfo.pathSize + ", paths num=" + metaInfo.leftPaths.length + ", path color=" + metaInfo.pathColor);
+        log("found left edge; offset=" + PathFinderMetaInfo.leftEdge + ", path width=" + PathFinderMetaInfo.pathSize + ", paths num=" + PathFinderMetaInfo.leftPaths.length + ", path color=" + PathFinderMetaInfo.pathColor);
         // draw info overlay
-        canvasDrawLine(tilesOverlay, metaInfo.leftEdge, 0, metaInfo.leftEdge, canvas.height);
-        for (let i = 0; i < metaInfo.leftPaths.length; i++) {
-          canvasDrawCircle(tilesOverlay, metaInfo.leftEdge, metaInfo.leftPaths[i].offset, metaInfo.pathSize, [0, 0xff, 0, 0xff], metaInfo.leftPaths[i].color);
+        canvasDrawLine(tilesOverlay, PathFinderMetaInfo.leftEdge, 0, PathFinderMetaInfo.leftEdge, canvas.height);
+        for (let i = 0; i < PathFinderMetaInfo.leftPaths.length; i++) {
+          canvasDrawCircle(tilesOverlay, PathFinderMetaInfo.leftEdge, PathFinderMetaInfo.leftPaths[i].offset, PathFinderMetaInfo.pathSize, [0, 0xff, 0, 0xff], PathFinderMetaInfo.leftPaths[i].color);
         }
         break;
       }
@@ -323,7 +323,7 @@ function findPathsEdges(canvas, sensetivity = 50, borderOffset = 0, minPathSize 
       x++;
     }
   }
-  if (!(metaInfo.leftEdge >= 0)) {
+  if (!(PathFinderMetaInfo.leftEdge >= 0)) {
     log("left edge not found");
   }
 

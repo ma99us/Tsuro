@@ -5,10 +5,10 @@
  * @param callback
  */
 export async function transitionElement(elem, styles, callback = null) {
-  if (typeof elem !== "object") {
+  if (elem == null || typeof elem !== "object") {
     throw "'elem' should be a DOM element";
   }
-  if (typeof styles !== "object") {
+  if (elem == null || typeof styles !== "object") {
     throw "'styles' should be an object with style names";
   }
 

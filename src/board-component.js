@@ -3,7 +3,7 @@ import {tiles, log, stateService} from "./tsuro.js"
 
 export default class Board {
 
-  initBoard() {
+  init() {
     if (!this.isReady) {
       stateService.state.boardTiles.forEach(tile => {
         this.drawTile(tile);

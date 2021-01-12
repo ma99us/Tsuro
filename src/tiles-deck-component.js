@@ -8,33 +8,28 @@ export default class TilesDeck {
   imgElem = null;
   txtElem = null;
 
-  get isReady() {
-    return this.imgElem;
-  }
-
-  initTilesDeck() {
-    if (this.isReady) {
-      return; // already initialized
-    }
-
-    if (!stateService.state.deckTiles || !stateService.state.deckTiles.length) {
-      stateService.state.deckTiles = [];
-      for (let id = 0; id < Tile.TotalNum; id++) {
-        stateService.state.deckTiles.push(id);
+  init() {
+    if (!this.imgElem) {
+      if (!stateService.state.deckTiles || !stateService.state.deckTiles.length) {
+        stateService.state.deckTiles = [];
+        for (let id = 0; id < Tile.TotalNum; id++) {
+          stateService.state.deckTiles.push(id);
+        }
       }
+
+      this.imgElem = document.createElement("img");
+      this.imgElem.src = TileBackImgSrc;
+      this.imgElem.style.marginLeft = "50px";
+      this.imgElem.onclick = () => {
+        // stateService.client.playerTiles.init();    // #DEBUG // REMOVE BEFORE RELEASE!
+      };
+      deckArea.appendChild(this.imgElem);
+
+      this.txtElem = document.createElement("p");
+      this.txtElem.style.marginLeft = "50px";
+      deckArea.appendChild(this.txtElem);
     }
 
-    this.imgElem = document.createElement("img");
-    this.imgElem.src = TileBackImgSrc;
-    this.imgElem.style.marginLeft = "50px";
-    this.imgElem.onclick = () => {
-      stateService.client.playerTiles.initPlayerTiles();
-    };
-    deckArea.appendChild(this.imgElem);
-
-    this.txtElem = document.createElement("p");
-    this.txtElem.style.marginLeft = "50px";
-    deckArea.appendChild(this.txtElem);
     this.updateTilesDeck();
   }
 
@@ -51,7 +46,7 @@ export default class TilesDeck {
   drawRandomTile() {
     let idx = Math.floor(Math.random() * stateService.state.deckTiles.length);
     if (idx < stateService.state.deckTiles.length) {
-      let id = stateService.state.deckTiles.splice(idx, 1);
+      let id = stateService.state.deckTiles.splice(idx, 1)[0];
       log("new tile id: " + id + ", tiles left: " + stateService.state.deckTiles.length);
       this.updateTilesDeck();
       return id;

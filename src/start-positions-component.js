@@ -1,7 +1,7 @@
 import {makeGlowFilter} from "./common/drawing.js";
 import {DIR} from "./pathfinder.js";
 import Meeple from "./meeple-component.js";
-import {TilesPos, BoardSize, TileThird, PathSize, PathColor, contentDiv, onStartPositionSelection, onPlayerTurnEnd, makePlayerColorStyle, stateService} from "./tsuro.js";
+import {TilesPos, BoardSize, TileThird, PathSize, PathColor, gameDiv, onStartPositionSelection, onPlayerTurnEnd, makePlayerColorStyle, log, stateService} from "./tsuro.js";
 
 export default class StartingPositions {
   allMarkersElems = [];
@@ -15,7 +15,7 @@ export default class StartingPositions {
     const selectedDisplay = "inline-block";
     const unselectedDisplay = "none";
     this.allMarkersElems.forEach((el) => {
-      const show = !this.playerMarkerElem && this.client.isPlayerTurn() && !this.isAlreadyTaken(el.path);
+      const show = this.client.isPlayerTurn() && !this.playerMarkerElem && !this.isAlreadyTaken(el.path);
       el.style.display = show ? "inline-block" : "none";
     });
   }
@@ -62,7 +62,7 @@ export default class StartingPositions {
     return meeple;
   }
 
-  initStartingPositions() {
+  init() {
     const makeSelector = (x, y, txt, path) => {
       x = Math.round(x);
       y = Math.round(y);
@@ -76,13 +76,23 @@ export default class StartingPositions {
       //elem.style.border = "3px solid " + makePlayerColorStyle(this.client.id);  // #DEBUG
       elem.style.filter = makeGlowFilter(3, makePlayerColorStyle(this.client.id), 3);
       elem.style.zIndex = "9";
-      elem.onclick = () => {
+      elem.onclick = async () => {
+        if (!stateService.isMyTurn) {
+          log("it is not your turn!");
+          return;
+        }
+
         this.selectPosition(elem);
+
         onStartPositionSelection(this.client, elem.path);
+
+        await this.client.playerTiles.init();  // draw initial random tiles
+
+        log(stateService.playerState.playerName + " 'starting position' turn is over");
         onPlayerTurnEnd(this.client);
       };
       this.allMarkersElems.push(elem);
-      contentDiv.appendChild(elem);
+      gameDiv.appendChild(elem);
     };
 
     if (!this.allMarkersElems || !this.allMarkersElems.length) {
@@ -109,8 +119,8 @@ export default class StartingPositions {
         if (elem.path.x0 === playerState.playerStartMarker.x0 &&
           elem.path.y0 === playerState.playerStartMarker.y0) {
 
-          //this.playerMarkerElem = elem;
           this.selectPosition(elem);
+
           onStartPositionSelection(this.client, elem.path);
         }
       });

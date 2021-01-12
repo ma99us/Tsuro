@@ -1,5 +1,6 @@
-import {makeGlowFilter, makeDropShadowFilter} from "./common/drawing";
-import {contentDiv, makePlayerColorStyle} from "./tsuro.js";
+import {makeGlowFilter, makeDropShadowFilter} from "./common/drawing.js";
+import GameStateService from "./game-state-service.js";
+import {gameDiv, makePlayerColorStyle} from "./tsuro.js";
 
 export default class PlayerMeeple{
   playerMeepleElem = null;
@@ -20,11 +21,11 @@ export default class PlayerMeeple{
       } else {
         this.syncFromState();
       }
-      contentDiv.appendChild(this.playerMeepleElem);
+      gameDiv.appendChild(this.playerMeepleElem);
     }
   }
 
-  initPlayerMeeple(){
+  init(){
     if (this.playerMeepleElem) {
       this.syncFromState();
     }
@@ -37,6 +38,12 @@ export default class PlayerMeeple{
     elem.style.left = (path.x1 - elem.width / 2) + "px";
     elem.style.top = (path.y1 - elem.height / 2) + "px";
     elem.style.transform = "rotate(" + elem.rot + "deg)";
+  }
+
+  highliteMeeple() {
+    const elem = this.playerMeepleElem;
+    elem.style.opacity = 1.0;
+    elem.style.filter = makeGlowFilter(3, makePlayerColorStyle(this.client.id), 5);
   }
 
   disableMeeple() {
@@ -53,8 +60,10 @@ export default class PlayerMeeple{
     const playerState = this.client.getPlayerState();
     if (playerState.playerMeeple) {
       this.moveMeeple(playerState.playerMeeple.path);
-      if (!this.client.isPlayerPlaying()) {
+      if (playerState.playerStatus === GameStateService.PlayerStates.LOST) {
         this.disableMeeple();
+      } else if (playerState.playerStatus === GameStateService.PlayerStates.WON) {
+        this.highliteMeeple();
       }
     }
   }

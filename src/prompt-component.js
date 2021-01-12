@@ -18,37 +18,31 @@ export default class Prompt {
   errBgColor = "#cc0000CC";    // redish
   errTxtColor = "#ffff66";
 
-  get isReady() {
-    return this.divElem;
-  }
+  init() {
+    if (!this.divElem) {
+      this.divElem = document.createElement("div");
+      this.divElem.style.position = "absolute"; // for css transitions to work
+      this.divElem.style.marginTop = "-25px";
+      this.divElem.style.marginLeft = "-200px";
+      this.divElem.style.transition = "all .8s ease";
+      this.divElem.style.left = "50%"; // for css transitions to work
+      this.divElem.style.top = "-50%"; // for css transitions to work
+      this.divElem.style.width = "400px";
+      this.divElem.style.height = "50px";
+      this.divElem.style.opacity = "0";
+      this.divElem.style.zIndex = "99";
+      this.divElem.style.textAlign = "center";
+      this.divElem.style.lineHeight = "50px";
+      this.divElem.onclick = () => {
+        // hide prompt on click
+        this.animatePromptHide();
+      };
 
-  initPrompt() {
-    if (this.isReady) {
-      return; // already initialized
+      this.txtElem = document.createElement("h");
+      this.divElem.appendChild(this.txtElem);
+
+      document.body.appendChild(this.divElem);
     }
-
-    this.divElem = document.createElement("div");
-    this.divElem.style.position = "absolute"; // for css transitions to work
-    this.divElem.style.marginTop = "-25px";
-    this.divElem.style.marginLeft = "-200px";
-    this.divElem.style.transition = "all .8s ease";
-    this.divElem.style.left = "50%"; // for css transitions to work
-    this.divElem.style.top = "-50%"; // for css transitions to work
-    this.divElem.style.width = "400px";
-    this.divElem.style.height = "50px";
-    this.divElem.style.opacity = "0";
-    this.divElem.style.zIndex = "99";
-    this.divElem.style.textAlign = "center";
-    this.divElem.style.lineHeight = "50px";
-    this.divElem.onclick = () => {
-      // hide prompt on click
-      this.animatePromptHide();
-    };
-
-    this.txtElem = document.createElement("h");
-    this.divElem.appendChild(this.txtElem);
-
-    document.body.appendChild(this.divElem);
   }
 
   setPromptStyle(type, linesNum) {
@@ -125,6 +119,12 @@ export default class Prompt {
 
   async showError(txt, showFor = -1) {
     return this.showPrompt(txt, showFor, Prompt.PromptType.ERROR);
+  }
+
+  async hidePrompt(){
+    if (this.showing) {
+      await this.animatePromptHide();
+    }
   }
 
   async animatePromptShow() {
