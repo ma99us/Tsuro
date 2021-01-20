@@ -63,7 +63,7 @@ and (min-device-width: 961px)
 and (max-device-width: 1024px)
 and (orientation: landscape) {
     body {
-        zoom: 0.8;
+        zoom: 0.75;
     }
 }
 
@@ -97,14 +97,13 @@ and (orientation: portrait) {
     }
 }
 
-
 /*iPad Pro landscape*/
 @media only screen
 and (min-device-width: 1281px)
 and (max-device-width: 1366px)
 and (orientation: landscape) {
     body {
-        zoom: 1.1;
+        zoom: 1.0;
     }
 }
 
@@ -119,23 +118,23 @@ and (orientation: portrait) {
 }
 
 
-/*iPad Pro 10 inch*/
+/*iPad Pro 10 inch landscape*/
 @media only screen
 and (min-device-width: 2000px)
 and (max-device-width: 2224px)
 and (orientation: landscape) {
     body {
-        zoom: 1.8;
+        zoom: 1.7;
     }
 }
 
-/*iPad Pro 12 inch*/
+/*iPad Pro 12 inch landscape*/
 @media only screen
 and (min-device-width: 2225px)
 and (max-device-width: 2732px)
 and (orientation: landscape) {
     body {
-        zoom: 2.2;
+        zoom: 2.1;
     }
 }
 

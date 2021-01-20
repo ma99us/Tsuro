@@ -1,4 +1,6 @@
+import {DEBUG_ENABLED} from "./debug-component.js";
 import GameStateService from "./game-state-service.js";
+import Tile from "./tile-component.js";
 import {tiles, log, stateService, makePlayerColorStyle, makePlayerElm} from "./tsuro.js"
 
 export const BackgroundColor = '#D69D5E33';
@@ -10,6 +12,10 @@ export default class Players {
 
   constructor(){
     this.playersDiv = document.getElementById('playersDiv');
+  }
+
+  getTilesDiv(idx) {
+    return this.playerElems[idx].tilesDiv;
   }
 
   update(idx){
@@ -36,6 +42,22 @@ export default class Players {
     } else {
       elem.style.textDecoration = "";
     }
+
+    // update players cards
+    // if (elem.tilesDiv) {
+    //   elem.tilesDiv.innerHTML = "";
+    //   for (let i = 0; playerState.playerTiles && i < playerState.playerTiles.length; i++) {
+    //     let id = playerState.playerTiles[i];
+    //     if (!DEBUG_ENABLED) {
+    //       id = id === Tile.DragonId ? Tile.DragonId : Tile.BackId;  // hide the tiles
+    //     }
+    //     const tileElem = new Tile(id).element;
+    //     tileElem.style.margin = "2px";
+    //     tileElem.style.width = "40px";
+    //     tileElem.style.height = "40px";
+    //     elem.tilesDiv.appendChild(tileElem);
+    //   }
+    // }
   }
 
   init() {
@@ -43,10 +65,20 @@ export default class Players {
     const makePlayer = (idx) => {
       const playerState = stateService.getPlayerState(idx);
       const elem = document.createElement("div");
+      elem.classList.add('player-div');
       elem.innerHTML = makePlayerElm(idx);
 
-      this.playersDiv.insertBefore(elem, this.playersDiv.childNodes[idx]);
-      this.playerElems.splice(idx, 0, elem);
+      if (playerState.playerStatus >= GameStateService.PlayerStates.WAITING
+        && playerState.playerStatus < GameStateService.PlayerStates.SPECTATOR) {
+        const tilesElem = document.createElement("div");
+        tilesElem.style.height = "45px";
+        tilesElem.style.position = "relative";
+        elem.tilesDiv = tilesElem;
+        elem.appendChild(tilesElem);
+      }
+
+      this.playersDiv.appendChild(elem);
+      this.playerElems.push(elem);
     };
 
     for (let i = 0; i < stateService.playersTotal; i++) {

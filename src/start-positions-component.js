@@ -12,12 +12,19 @@ export default class StartingPositions {
   }
 
   update() {
-    const selectedDisplay = "inline-block";
-    const unselectedDisplay = "none";
     this.allMarkersElems.forEach((el) => {
-      const show = this.client.isPlayerTurn() && !this.playerMarkerElem && !this.isAlreadyTaken(el.path);
+      const show = this.client.isPlayerTurn() && !this.playerMarkerElem && !this.isAlreadyTaken(el.path) && !this.isBusy;
       el.style.display = show ? "inline-block" : "none";
     });
+  }
+
+  get isBusy() {
+    return this.isDirty;
+  }
+
+  set isBusy(val) {
+    this.isDirty = val;
+    this.update();
   }
 
   selectPosition(elem) {
@@ -77,6 +84,10 @@ export default class StartingPositions {
       elem.style.filter = makeGlowFilter(3, makePlayerColorStyle(this.client.id), 3);
       elem.style.zIndex = "9";
       elem.onclick = async () => {
+        if (this.isBusy) {
+          log("initializing, please wait...");
+          return;
+        }
         if (!stateService.isMyTurn) {
           log("it is not your turn!");
           return;
@@ -86,9 +97,9 @@ export default class StartingPositions {
 
         onStartPositionSelection(this.client, elem.path);
 
-        await this.client.playerTiles.init();  // draw initial random tiles
+        //await this.client.playerTiles.init();  // draw initial random tiles
 
-        log(stateService.playerState.playerName + " 'starting position' turn is over");
+        //log(stateService.playerState.playerName + " 'starting position' turn is over");
         onPlayerTurnEnd(this.client);
       };
       this.allMarkersElems.push(elem);

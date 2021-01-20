@@ -1,8 +1,34 @@
 import {includeHTML} from "./common/html-loader.js";
-import {stateService, processState, log} from "./tsuro.js";
+import {log, stateService} from "./tsuro.js";
+
+export let DEBUG_ENABLED = false;
+
+function isProd() {
+  try {
+    return PRODUCTION === true;  // might not be defined!
+  } catch (err) {
+    return false;
+  }
+}
+
+function getVersion() {
+  try {
+    return VERSION;  // might not be defined!
+  } catch (err) {
+    return '???';
+  }
+}
 
 export async function initDebug() {
+
+  if (isProd()) {
+    console.log("* Production Build *; v." + getVersion());
+    return;
+  }
+
   console.log("**** Initializing DEBUG Console ****");
+
+  DEBUG_ENABLED = true;
 
   //await includeHTML(document.body, 'debug.html');
 
@@ -46,4 +72,13 @@ export async function initDebug() {
       window.location.reload();
     });
   };
+}
+
+// add build version
+export function initVersion() {
+  const footerDiv = document.getElementById('footer');
+  const verElem = document.createElement("span");
+  verElem.classList.add("small-text")
+  verElem.innerHTML = "v." + getVersion();
+  footerDiv.insertBefore(verElem, footerDiv.childNodes[0]);
 }

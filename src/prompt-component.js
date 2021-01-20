@@ -22,17 +22,19 @@ export default class Prompt {
     if (!this.divElem) {
       this.divElem = document.createElement("div");
       this.divElem.style.position = "absolute"; // for css transitions to work
-      this.divElem.style.marginTop = "-25px";
-      this.divElem.style.marginLeft = "-200px";
+      // this.divElem.style.marginTop = "-25px";
+      // this.divElem.style.marginLeft = "-200px";
+      this.divElem.style.transform = "translate(-50%, -50%)";
       this.divElem.style.transition = "all .8s ease";
       this.divElem.style.left = "50%"; // for css transitions to work
       this.divElem.style.top = "-50%"; // for css transitions to work
-      this.divElem.style.width = "400px";
-      this.divElem.style.height = "50px";
+      this.divElem.style.maxWidth = "75%";
+      // this.divElem.style.width = "400px";
+      // this.divElem.style.height = "50px";
       this.divElem.style.opacity = "0";
       this.divElem.style.zIndex = "99";
       this.divElem.style.textAlign = "center";
-      this.divElem.style.lineHeight = "50px";
+      this.divElem.style.lineHeight = "40px";
       this.divElem.onclick = () => {
         // hide prompt on click
         this.animatePromptHide();
@@ -69,10 +71,10 @@ export default class Prompt {
       this.txtElem.style.fontSize = "xx-large";
     }
 
-    const height = Math.max(50, linesNum * 30);
-    const lineHeight = Math.floor(height / linesNum);
-    this.divElem.style.height = height + "px";
-    this.divElem.style.lineHeight = lineHeight + "px";
+    // const height = Math.max(50, linesNum * 40);
+    // const lineHeight = Math.floor(height / linesNum);
+    // this.divElem.style.height = height + "px";
+    // this.divElem.style.lineHeight = lineHeight + "px";
   }
 
   getDelayedPrompt() {
@@ -96,7 +98,7 @@ export default class Prompt {
         txtLines += i > 0 ? ("<br/>" + txt[i]) : txt[i];
       }
     } else {
-      this.setPromptStyle(type, 1);
+      this.setPromptStyle(type, 1);    // Math.ceil(txt.length / 20)
       txtLines = txt;
     }
     this.txtElem.innerHTML = txtLines;

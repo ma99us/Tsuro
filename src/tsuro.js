@@ -1,6 +1,6 @@
 import * as drawing from "./common/drawing.js";
-import {transitionElement, getElementsOffset, sleep} from "./common/dom-animator.js";
-import {traversePath, projectToTile} from "./pathnavigator.js";
+import {getElementsOffset, sleep, transitionElement} from "./common/dom-animator.js";
+import {projectToTile, traversePath} from "./pathnavigator.js";
 import Tile from "./tile-component.js";
 import Meeple from "./meeple-component.js";
 import TilesDeck from "./tiles-deck-component.js";
@@ -11,21 +11,22 @@ import TileHighlighter from "./tile-highlighter-component.js";
 import Prompt from "./prompt-component.js";
 import GameStateService from "./game-state-service.js";
 import Board from "./board-component.js";
-import Players, {BackgroundColor, BackgroundColorActive} from "./players-component.js";
+import Players, {BackgroundColorActive} from "./players-component.js";
 import Room from "./room-component.js";
 import Home from "./home-component.js";
-import {initDebug} from "./debug-component.js";
+import {initDebug, initVersion} from "./debug-component.js";
 
-initDebug();    // REMOVE BEFORE RELEASE!
+initDebug();    // will do nothing in PRODUCTION build
+initVersion();
 
 // DOM elements
 export const gameDiv = document.getElementById('game');
 //export const board = document.getElementById('board');
 export const tiles = document.getElementById('tiles');
 export const tilesOverlay = document.getElementById('tilesOverlay');
-export const deckArea = document.getElementById('deckArea');
 export const playerArea = document.getElementById('playerArea');
 export const infoDiv = document.getElementById('infoDiv');
+export const backHomeBtn = document.getElementById('gameBackHome');
 
 // Global constants
 export const BoardSize = tiles.width;
@@ -101,11 +102,11 @@ export function onGameLoaded() {  // called by game-state-service when game stat
 // load graphic resources
 function initGameComponents() {
   // these are safe to init on every state update
+  // these will update previously initialized components from current state
+
   tilesDeck.init();
   board.init();
   players.init();
-
-  //TODO: update previously initialized components from state
 }
 
 function initPlayersComponents() {
@@ -124,11 +125,11 @@ function initPlayersComponents() {
     }
 
     // these are safe to init on every state update
+    // these will update previously initialized components from current state
     client.playerMeeple.init();
+    client.playerTiles.init();
     client.startingPositions.init();
     client.highlighter.init();
-
-    //TODO: update previously initialized components from state
   }
 }
 
@@ -153,13 +154,30 @@ export function startGame() {
   state.gameStatus = GameStateService.GameStates.PLAYING;
   log("Game playing");
 
+  for (let i = 0; i < stateService.playersTotal; i++) {
+    const playerState = stateService.getPlayerState(i);
+    playerState.playerStatus = GameStateService.PlayerStates.WAITING;
+    log("Player " + playerState.playerName + " waiting");
+  }
+
+  tilesDeck.initDeckTiles();  // build initial tiles deck
+
   stateService.fireLocalStateUpdated()
     .then(() => {
       return stateService.updateRoom();
     })
     .finally(() => {
-    processState();
-  });
+      processState();
+    });
+
+
+  stateService.fireLocalStateUpdated()
+    .then(() => {
+      return stateService.updateRoom();
+    })
+    .finally(() => {
+      processState();
+    });
 }
 
 // main state machine
@@ -183,8 +201,8 @@ export function processState() {
           return stateService.updateRoom();
         })
         .finally(() => {
-        processState();
-      });
+          processState();
+        });
     } else if (stateService.isGameStarting) {
       // we are in the game "room". Register players, the game is about to start.
       room.init();
@@ -197,21 +215,14 @@ export function processState() {
       room.show(false);
       showGame(true);
 
+      // all players should be registered and 'ready' at this point
       // sync local UI components based on updated state
       initGameComponents();
       initPlayersComponents();
 
-      const playerState = stateService.playerState;
-      if (playerState && !stateService.isPlayerReady) {
-        playerState.playerStatus = GameStateService.PlayerStates.WAITING;
-        log("Player " + playerState.playerName + " ready");
-
-        stateService.fireLocalStateUpdated().finally(() => {
-          processState();
-        });
-      } else if (playerState && stateService.isGamePlaying) {
+      if (stateService.isGamePlaying) {
         onPlayerTurn();
-      } else if(playerState && stateService.isGameFinished){
+      } else if (stateService.isGameFinished) {
         // just show the winner prompt
         const winnerIdx = state.players.findIndex(p => p.playerStatus === GameStateService.PlayerStates.WON);
         if (winnerIdx >= 0) {
@@ -259,6 +270,7 @@ export function processAction(nextState) {
     log("'tile placing' action for playerIdx=" + playerIdx); // #DEBUG
     // this looks like a 'tile placing' action
     // re-play placed tile action's animations
+    client.playerTiles.init();
     client.playerTiles.syncFromState(nextPlayerState);
 
     client.getPlayerState().playerSelectedTile = nextPlayerState.playerSelectedTile;
@@ -266,7 +278,7 @@ export function processAction(nextState) {
     // client.highlighter.move(col, row);
     client.highlighter.placeTile();
   } else {
-    log("Unexpected action for playerIdx=" + playerIdx+":" + JSON.stringify(stateService.stateDiffs)); // #DEBUG
+    log("Unexpected action for playerIdx=" + playerIdx + ":" + JSON.stringify(stateService.stateDiffs)); // #DEBUG
   }
 }
 
@@ -324,45 +336,64 @@ export function onPlayerTurn() {
 }
 
 // player's preliminary turn, to pick starting position just started. State handler.
-function onPlayerStartingPositionTurn() {
+async function onPlayerStartingPositionTurn() {
   infoDiv.innerHTML = "Meeple placement turn for " + makePlayerElm(stateService.state.playerTurn);
 
   if (stateService.isMyTurn) {
     infoDiv.style.boxShadow = "0 0 5px 5px " + makePlayerColorStyle(stateService.state.playerTurn);
     infoDiv.style.backgroundColor = BackgroundColorActive;
+    infoDiv.style.border = "2px solid grey";
   } else {
     infoDiv.style.boxShadow = "";
-    infoDiv.style.backgroundColor = BackgroundColor;
+    infoDiv.style.backgroundColor = "";  // BackgroundColor
+    infoDiv.style.border = "";
   }
 
-  stateService.client.startingPositions.update();
-
-  stateService.client.playerTiles.init([]);    // no player tiles yet
+  if (stateService.isMyTurn && stateService.playerState.playerTiles.length === 0) {
+    // draw current player initial 3 tiles
+    try {
+      stateService.client.startingPositions.isBusy = true;
+      stateService.client.playerTiles.isBusy = true;
+      await stateService.client.playerTiles.drawNewTile();
+      await stateService.client.playerTiles.drawNewTile();
+      await stateService.client.playerTiles.drawNewTile();
+    } finally {
+      stateService.client.playerTiles.isBusy = false;
+      stateService.client.startingPositions.isBusy = false;
+    }
+  }
 }
 
 // player's normal game flow turn, to play a tile just started. State handler.
 async function onPlayerTileTurn() {
   infoDiv.innerHTML = "Turn: " + stateService.playerState.playerTurnsPlayed + " for " +
     makePlayerElm(stateService.state.playerTurn) + ". Players left: " + stateService.playingPlayersTotal
-    //+ ", total path length: " + stateService.playerState.playerPathLength
-    ;
+  //+ ", total path length: " + stateService.playerState.playerPathLength
+  ;
 
   if (stateService.isMyTurn) {
     infoDiv.style.boxShadow = "0 0 5px 5px " + makePlayerColorStyle(stateService.state.playerTurn);
     infoDiv.style.backgroundColor = BackgroundColorActive;
+    infoDiv.style.border = "2px solid grey";
   } else {
     infoDiv.style.boxShadow = "";
-    infoDiv.style.backgroundColor = BackgroundColor;
+    infoDiv.style.backgroundColor = "";    // BackgroundColor
+    infoDiv.style.border = "";
   }
 
   // reset player state
   stateService.playerState.playerTilePlaced = null;
   stateService.playerState.playerSelectedTile = null;
-  stateService.client.playerTiles.playerSelectedTileElem = null;
+  stateService.client.playerTiles.selectedTileElem = null;
 
-  await stateService.client.playerTiles.init([...stateService.playerState.playerTiles]);
+  // if (stateService.isMyTurn) {
+  //   stateService.client.playerTiles.init();     // show current player tiles
+  // }
+  if (stateService.myClient) {  // spectator will not have myClient
+    stateService.myClient.playerTiles.init();   // show my tiles
+  }
 
-  const noMoreTilesToPlay = stateService.isPlayerPlaying && !stateService.playerState.playerTiles.length && !stateService.state.deckTiles.length;
+  const noMoreTilesToPlay = stateService.isPlayerPlaying && !stateService.playerState.playerTiles.filter(t => t !== Tile.DragonId).length;
   const lastPlayerPlaying = stateService.isPlayerPlaying && stateService.playingPlayersTotal === 1;
 
   // if no more tiles left and player has none, then Game Over and this player won.
@@ -385,28 +416,32 @@ export async function onPlayerTilePlaced(client) {
   client.playerTiles.tilePlayed(client.getPlayerState().playerSelectedTile.id);
 
   // start tile placement animation
-  let {dx, dy} = getElementsOffset(client.playerTiles.playerSelectedTileElem, tiles);
+  let {dx, dy} = getElementsOffset(client.playerTiles.selectedTileElem, tiles);
   dx += client.getPlayerState().playerTilePlaced.c * Tile.size;
   dy += client.getPlayerState().playerTilePlaced.r * Tile.size;
   const animStyle = {
     transition: "all 1s",
     left: dx + "px",
-    top: dy + "px"
+    top: dy + "px",
+    width: TileSize + "px",
+    height: TileSize + "px"
   };
 
-  await transitionElement(client.playerTiles.playerSelectedTileElem, animStyle);
+  await transitionElement(client.playerTiles.selectedTileElem, animStyle);
 
-  client.playerTiles.removePlayedTile();
+  client.playerTiles.removePlayedTile(client.getPlayerState().playerSelectedTile.id);
 
   await onTraversePlacedTile(client);
 
   // replenish player tile
-  let newIds = [...client.getPlayerState().playerTiles];
-  while (newIds.length < 3) {
-    //newIds.splice(0, 0, null);
-    newIds.push(null);    // 'null' will trigger new tile draw from the deck
+  // let newIds = [...client.getPlayerState().playerTiles];
+  // while (newIds.length < 3) {
+  //   //newIds.splice(0, 0, null);
+  //   newIds.push(null);    // 'null' will trigger new tile draw from the deck
+  // }
+  if (stateService.isMyTurn && client.isPlayerPlaying()) {
+    await client.playerTiles.drawNewTile();
   }
-  await client.playerTiles.init(newIds);
 
   log(stateService.playerState.playerName + "' tile placing 'turn is over");
   onPlayerTurnEnd(client);
@@ -517,6 +552,13 @@ async function onPlayerDone(id) {
 
     infoDiv.style.boxShadow = "0 0 5px 5px " + makePlayerColorStyle(id);
     infoDiv.style.backgroundColor = BackgroundColorActive;
+    infoDiv.style.border = "2px solid grey";
+
+    backHomeBtn.style.display = "inline-block";
+    backHomeBtn.onclick = () => {
+      window.location.hash = '';
+      window.location.reload();
+    };
 
     log("Game Over. " + playerState.playerName + " won!");
     //alert("Game Over. " + playerState.playerName + " won!");
@@ -524,6 +566,7 @@ async function onPlayerDone(id) {
   } else {
     // return remaining player tiles back to deck
     tilesDeck.returnTilesToDeck(playerState.playerTiles);
+    playerState.playerTiles = [];
 
     log(playerState.playerName + " lost :-(");
     //alert(playerState.playerName + " lost :-(");
@@ -549,3 +592,24 @@ export function makePlayerElm(id) {
   return "<span class='outlined-text' style='color: " + playerColorStyle + "; font-weight: bolder;'>" + playerState.playerName + "</span>";
 }
 
+window.onerror = function(msg, url, line, col, error) {
+  // Note that col & error are new to the HTML 5 spec and may not be supported in every browser.
+  const extra = "In url: " + url + " line: " + line + (!col ? '' : ' column: ' + col) + !error ? '' : ', error: ' + error;
+
+  //alert("Error: " + msg + "\nurl: " + url + "\nline: " + line + extra);
+  log("Error: " + msg + "<br>(" + extra + ")", true);
+
+
+  const suppressErrorAlert = true;
+  // If you return true, then error alerts (like in older versions of Internet Explorer) will be suppressed.
+  return suppressErrorAlert;
+};
+
+window.addEventListener('unhandledrejection', function(event) {
+  // the event object has two special properties:
+  // [object Promise] - the promise that generated the error
+  // Error: Whoops! - the unhandled error object
+
+  log("Error: " + event.reason + "<br>In: " + event.promise, true);
+
+});

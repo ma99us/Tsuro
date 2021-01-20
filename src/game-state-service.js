@@ -24,7 +24,8 @@ export default class GameStateService {
     roundNum: 0,                 // game round number
     // game specific properties:
     deckTiles: [],              // array of tile ids, left in the deck
-    boardTiles: []             // array of objects {column:, row:, tile:, rotation: }
+    boardTiles: [],             // array of objects {column:, row:, tile:, rotation: }
+    // dragonTileTaken: null       // index of the player who took "dragon tile", null if tile is returned/available
   };
 
   // Each player state object template
@@ -248,8 +249,9 @@ export default class GameStateService {
       return this.roomService.registerRoom();
     } else if (room.id) {
       return this.roomService.updateRoom();
-    } else{
-      throw "Can't update room. This should not happen!";
+    } else {
+      // do not register that new room before first player gets registered
+      //throw "Can't update room. This should not happen!";
     }
   }
 
@@ -260,6 +262,10 @@ export default class GameStateService {
     return this.getClient(this.state.playerTurn);
   }
 
+  get myClient() {
+    return this.getClient(this.myPlayerId);
+  }
+
   getClient(idx) {
     const state = this.state;
     if (!this.clients) {
@@ -267,6 +273,7 @@ export default class GameStateService {
       this.clients = state.players.map((p, idx) => {
         const client = {
           id: idx,
+          isMyClient: idx === this.myPlayerId,
           getGameState: () => {
             return this.state;
           },
@@ -292,16 +299,21 @@ export default class GameStateService {
   //////// host state synchronization events
 
   connect() {
+    this.hostStorageService = HostStorageService.getInstance();
     this.messageBusService = MessageBusService.getInstance();
+
+    const dbName = API.HOST_DB_NAME + this.gameId;
+    this.hostStorageService.API.setDbName(dbName);
+
     this.messageBusService.subscribe(null, (eventName, data) => { //FIXME: subscribe to all events for now
       //console.log("<<< " + eventName + ": " + JSON.stringify(data));  // #DEBUG
       //console.log("<<< " + eventName);  // #DEBUG
 
-      if (eventName === 'session-event' && data.event === 'OPENED') {
+      if (eventName === 'session-event' && data.event === 'OPENED' && data.sessionId === this.hostStorageService.sessionId) {
         this.onSessionConnected(data.sessionId);
-      } else if (eventName === 'session-event' && data.event === 'CLOSED') {
+      } else if (eventName === 'session-event' && data.event === 'CLOSED' && data.sessionId === this.hostStorageService.sessionId) {
         this.onSessionClosed();
-      } else if (eventName === 'session-event' && data.event === 'ERROR') {
+      } else if (eventName === 'session-event' && data.event === 'ERROR' && data.sessionId === this.hostStorageService.sessionId) {
         this.onSessionError();
       } else if (eventName === 'db-event' && data.event === 'UPDATED' && data.key === 'state' && (data.value.version > this.state.version || data.value.version === 0)) {
         if (this.onRemoteStateUpdate(data.value)) {
@@ -310,11 +322,7 @@ export default class GameStateService {
       }
     });
 
-    this.hostStorageService = HostStorageService.getInstance();
-    const dbName = API.HOST_DB_NAME + this.gameId;
-    this.hostStorageService.API.setDbName(dbName);
-
-    console.log("Game id='" + this.gameId + "'; DB name='" + dbName+"'");  // #DEBUG
+    console.log("Game id='" + this.gameId + "'; DB name='" + dbName + "'");  // #DEBUG
     return this.hostStorageService.connect();
   }
 
@@ -349,7 +357,7 @@ export default class GameStateService {
     //log('onRemoteStateUpdate; state: ' + JSON.stringify(remoteState)); // #DEBUG
     log('onRemoteStateUpdate; local version=' + this.gameState.version + ', remote version=' + remoteState.version + '; this.nextState=' + this.nextState); // #DEBUG
 
-    if(this.nextState && remoteState.version !== 0){
+    if (this.nextState && remoteState.version !== 0) {
       // already processing next state, wait fro it's complition
       this.nextState = remoteState;
       return false; // do not call state machine
@@ -359,11 +367,11 @@ export default class GameStateService {
     //Check if current player action just ended, and do not apply new state right away
     this.isActionState = remoteState.version !== 0 && remoteState.version === this.gameState.version + 1
       && remoteState.playerTurn !== this.gameState.playerTurn
-      ;
-    if(this.isActionState){
+    ;
+    if (this.isActionState) {
       // queue pending state
       this.nextState = remoteState;
-    } else{
+    } else {
       // overwrite local state now
       this.gameState = remoteState;
     }
@@ -448,7 +456,6 @@ export default class GameStateService {
       })
   }
 }
-
 
 
 /**

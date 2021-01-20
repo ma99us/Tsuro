@@ -1,5 +1,6 @@
 const TileMapImgSrc = "img/all_tiles_1.png";
 const TileBackImgSrc = "img/tile_back_1.png";
+const TileBackGreyImgSrc = "img/tile_back_1_grey.png";
 
 export default class Tile {
   static MappingCols = 6;
@@ -8,12 +9,14 @@ export default class Tile {
   static size = null;
   static mapImg = null;
   static backImg = null;
+  static backGreyImg = null;
 
   static TotalNum = Tile.MappingCols * Tile.MappingRows - 1;  // last tile is not playable (special)
   static DragonId = Tile.TotalNum;  // special dragon tile id
   static BackId = Tile.TotalNum + 1;  // tile back side id
+  static BackGreyId = Tile.TotalNum + 2;  // tile back grey side id
 
-  constructor(id, rot = 0) {
+  constructor(id = Tile.BackId, rot = 0) {
     this.id = id;
     this.rot = rot;
 
@@ -21,7 +24,7 @@ export default class Tile {
   }
 
   static async init() {
-    if (Tile.mapImg && Tile.backImg) {
+    if (Tile.mapImg && Tile.backImg && Tile.backGreyImg) {
       return;
     }
 
@@ -40,11 +43,20 @@ export default class Tile {
       Tile.backImg.setAttribute('crossOrigin', '');
       Tile.backImg.src = TileBackImgSrc;
       Tile.backImg.onload = () => {
-        resolve("all tiles ready");
+        resolve("tile back ready");
       };
     });
 
-    return Promise.all([p1, p2]);
+    const p3 = new Promise((resolve, reject) => {
+      Tile.backGreyImg = new Image();
+      Tile.backGreyImg.setAttribute('crossOrigin', '');
+      Tile.backGreyImg.src = TileBackGreyImgSrc;
+      Tile.backGreyImg.onload = () => {
+        resolve("tile back grey ready");
+      };
+    });
+
+    return Promise.all([p1, p2, p3]);
   }
 
   get image() {
@@ -67,6 +79,11 @@ export default class Tile {
         x, y, width, height);
     };
 
+    const drawBackGreyImage = (context, x, y, width, height) => {
+      context.drawImage(Tile.backGreyImg, 0, 0, Tile.size, Tile.size,
+        x, y, width, height);
+    };
+
     this.canvas = document.createElement('canvas');
     this.canvas.width = Tile.size;
     this.canvas.height = Tile.size;
@@ -79,7 +96,9 @@ export default class Tile {
       let y = height / 2;
       context.translate(x, y);
       context.rotate(this.rot);
-      if (this.id === Tile.BackId) {
+      if (this.id === Tile.BackGreyId) {
+        drawBackGreyImage(context, -width / 2, -height / 2, width, height);
+      } else if (this.id === Tile.BackId) {
         drawBackImage(context, -width / 2, -height / 2, width, height);
       } else {
         drawMappedImage(context, -width / 2, -height / 2, width, height);
@@ -87,7 +106,9 @@ export default class Tile {
       context.rotate(-this.rot);
       context.translate(-x, -y);
     } else {
-      if (this.id === Tile.BackId) {
+      if (this.id === Tile.BackGreyId) {
+        drawBackGreyImage(context, 0, 0, width, height);
+      } else if (this.id === Tile.BackId) {
         drawBackImage(context, 0, 0, width, height);
       } else {
         drawMappedImage(context, 0, 0, width, height);
@@ -98,7 +119,7 @@ export default class Tile {
   }
 
   get element() {
-    if(this.elem){
+    if (this.elem) {
       return this.elem;
     }
 
@@ -109,5 +130,23 @@ export default class Tile {
     this.elem.getContext('2d').drawImage(this.image, 0, 0);
 
     return this.elem;
+  }
+
+  mask() {
+    if (!this.elem || this.isMasked) {
+      return;
+    }
+
+    this.elem.getContext('2d').drawImage(Tile.backImg, 0, 0);
+    this.isMasked = true;
+  }
+
+  unmask() {
+    if (!this.elem || !this.isMasked) {
+      return;
+    }
+
+    this.elem.getContext('2d').drawImage(this.image, 0, 0);
+    this.isMasked = false;
   }
 }

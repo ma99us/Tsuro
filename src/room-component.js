@@ -22,6 +22,8 @@ export default class Room {
         this.roomPlayerColor = document.getElementById('roomPlayerColor');
         this.roomPlayerInfoReady = document.getElementById('roomPlayerInfoReady');
         this.startGame = document.getElementById('roomStartGame');
+        this.waitToStart = document.getElementById('roomWaitToStart');
+        this.gameOwner = document.getElementById('roomGameOwner');
         this.presetColors = document.getElementById('roomPlayerPresetColors');
 
         this.roomPlayerColor.onchange = (event) => {
@@ -174,6 +176,7 @@ export default class Room {
     }
 
     this.roomId.innerHTML = stateService.gameId;
+    this.gameOwner.innerHTML = stateService.playersTotal ? makePlayerElm(0) : 'someone';
     this.syncFromState();
   }
 
@@ -182,6 +185,7 @@ export default class Room {
     this.playerInfo.style.display = hidePlayerInfo ? "none" : "block";
 
     this.startGame.style.display = stateService.myPlayerId === 0 ? "inline-block" : "none";
+    this.waitToStart.style.display = stateService.myPlayerId > 0 ? "inline-block" : "none";
 
     const idx = stateService.getStateDiffKeys('players');
     idx.forEach(i => {

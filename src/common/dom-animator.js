@@ -11,6 +11,9 @@ export async function transitionElement(elem, styles, callback = null) {
   if (elem == null || typeof styles !== "object") {
     throw "'styles' should be an object with style names";
   }
+  if (!document.body.contains(elem)) {
+    throw "'elem' element is not on DOM";
+  }
 
   return new Promise(resolve => {
     function onEnd(ev) {
@@ -77,6 +80,12 @@ export function removeStyles(elem, styles) {
 }
 
 export function getElementsOffset(elem1, elem2) {
+  if (!document.body.contains(elem1)) {
+    throw "'elem1' element is not on DOM";
+  }
+  if (!document.body.contains(elem2)) {
+    throw "'elem2' element is not on DOM";
+  }
 // these are relative to the viewport, i.e. the window
   const vpOffset1 = elem1.getBoundingClientRect();
   const vpOffset2 = elem2.getBoundingClientRect();

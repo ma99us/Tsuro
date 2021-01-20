@@ -1,72 +1,142 @@
+import {DEBUG_ENABLED} from "./debug-component.js";
+import {makeDropShadowFilter} from "./common/drawing.js";
 import {transitionElement} from "./common/dom-animator.js";
 import Tile from "./tile-component.js";
-import {deckArea, log, stateService} from "./tsuro.js"
-
-const TileBackImgSrc = "img/tile_back_1.png";
+import {log, stateService} from "./tsuro.js"
 
 export default class TilesDeck {
-  imgElem = null;
+  deckImgTile = null;
   txtElem = null;
 
-  init() {
-    if (!this.imgElem) {
-      if (!stateService.state.deckTiles || !stateService.state.deckTiles.length) {
-        stateService.state.deckTiles = [];
-        for (let id = 0; id < Tile.TotalNum; id++) {
-          stateService.state.deckTiles.push(id);
-        }
-      }
-
-      this.imgElem = document.createElement("img");
-      this.imgElem.src = TileBackImgSrc;
-      this.imgElem.style.marginLeft = "50px";
-      this.imgElem.onclick = () => {
-        // stateService.client.playerTiles.init();    // #DEBUG // REMOVE BEFORE RELEASE!
-      };
-      deckArea.appendChild(this.imgElem);
-
-      this.txtElem = document.createElement("p");
-      this.txtElem.style.marginLeft = "50px";
-      deckArea.appendChild(this.txtElem);
-    }
-
-    this.updateTilesDeck();
+  constructor() {
+    this.deckArea = document.getElementById('deckArea');
   }
 
-  updateTilesDeck() {
-    if (stateService.state.deckTiles.length > 1) {
-      this.txtElem.innerHTML = stateService.state.deckTiles.length + " tiles";
-    } else if (stateService.state.deckTiles.length === 1) {
-      this.txtElem.innerHTML = "Last tile";
+  update() {
+    if (this.tilesNum > 1) {
+      this.makeDeckElement(Tile.BackId);
+      this.txtElem.innerHTML = this.tilesNum + " tiles left";
+    } else if (this.tilesNum === 1) {
+      this.makeDeckElement(Tile.BackId);
+      this.txtElem.innerHTML = "1 tile left";
+    } else if (!this.isDragonTileTaken) {
+      this.makeDeckElement(Tile.DragonId);
+      this.txtElem.innerHTML = "\"Dragon Tile\" available";
     } else {
+      this.makeDeckElement(Tile.BackGreyId);
       this.txtElem.innerHTML = "No more tiles";
     }
+
+    const shadowDepth = Math.min(this.tilesNum, 5);
+    this.deckImgTile.element.style.filter = makeDropShadowFilter(shadowDepth, 'black', 0);
+  }
+
+  init() {
+    if (!this.deckImgTile) {
+      this.makeDeckElement(Tile.BackId);
+    }
+
+    if (!this.txtElem) {
+      this.txtElem = document.createElement("p");
+      this.txtElem.style.marginLeft = "50px";
+      this.txtElem.style.marginTop = "0.5em";
+      this.deckArea.appendChild(this.txtElem);
+    }
+
+    this.update();
+  }
+
+  makeDeckElement(id) {
+    if (this.deckImgTile && this.deckImgTile.id === id) {
+      return;
+    } else if (this.deckImgTile) {
+      this.deckImgTile.element.remove();
+    }
+    this.deckImgTile = new Tile(id);
+    const elem = this.deckImgTile.element;
+    elem.style.marginLeft = "50px";
+    elem.onclick = () => {
+      if (DEBUG_ENABLED) {
+        const id = stateService.myClient.getPlayerState().playerTiles[0];
+        if (id != null) {
+          stateService.myClient.playerTiles.removePlayedTile(id);
+        }
+        stateService.myClient.playerTiles.drawNewTile();    // #DEBUG
+      } else {
+        elem.style.transform = "translate3d(0, 0, 0)";
+        if (!elem.animState) {
+          elem.classList.add("shake-me");
+          elem.animState = true;
+        } else {
+          elem.classList.remove("shake-me");
+          elem.animState = false;
+        }
+      }
+    };
+
+    this.deckArea.insertBefore(elem, this.deckArea.childNodes[0]);
+  }
+
+  // build initial tiles deck
+  initDeckTiles() {
+    // if (!stateService.state.deckTiles || !stateService.state.deckTiles.length) {
+    stateService.state.deckTiles = [];
+    stateService.state.deckTiles.push(Tile.DragonId); // dragon tile always on the bottom of the deck
+    for (let id = 0; id < Tile.TotalNum; id++) {
+      stateService.state.deckTiles.push(id);
+    }
+    // }
+  }
+
+  get isDragonTileTaken() {
+    return !stateService.state.deckTiles.length || stateService.state.deckTiles[0] !== Tile.DragonId;
+  }
+
+  get tilesNum() {
+    return this.isDragonTileTaken ? stateService.state.deckTiles.length : stateService.state.deckTiles.length - 1;
   }
 
   drawRandomTile() {
-    let idx = Math.floor(Math.random() * stateService.state.deckTiles.length);
-    if (idx < stateService.state.deckTiles.length) {
+    if (this.tilesNum) {
+      let idx = null;
+      if (this.isDragonTileTaken) {
+        idx = Math.floor(Math.random() * stateService.state.deckTiles.length);  // all indexes
+      } else {
+        idx = Math.floor(Math.random() * (stateService.state.deckTiles.length - 1)) + 1;  // all indexes, except 0
+      }
+
       let id = stateService.state.deckTiles.splice(idx, 1)[0];
-      log("new tile id: " + id + ", tiles left: " + stateService.state.deckTiles.length);
-      this.updateTilesDeck();
+      log("new tile id: " + id + " [" + idx + "], tiles left: " + this.tilesNum + ", isDragonTileTaken: " + this.isDragonTileTaken);
+      this.update();
+      return id;
+    } else if (!this.isDragonTileTaken) {
+      let id = stateService.state.deckTiles.splice(0, 1)[0];
+      log("giving out \"dragon tile\"");
+      this.update();
       return id;
     } else {
       log("no more tiles left");
-      this.updateTilesDeck();
+      this.update();
       return null;  // deck is empty
     }
   }
 
-  returnTilesToDeck(ids){
+  returnTilesToDeck(ids) {
     for (let i = 0; i < ids.length; i++) {
-      stateService.state.deckTiles.push(ids[i]);
-      log("returning tile id: " + ids[i] + ", tiles left: " + stateService.state.deckTiles.length);
+      if (ids[i] === Tile.DragonId) {
+        //stateService.state.dragonTileTaken = null;
+        stateService.state.deckTiles.splice(0, 0, ids[i]);  // always insert Dragon into index 0
+        log("returning \"Dragon Tile\"");
+      } else {
+        stateService.state.deckTiles.push(ids[i]);
+        log("returning tile id: " + ids[i] + ", tiles left: " + this.tilesNum);
+      }
     }
-    this.updateTilesDeck();
+    this.update();
   }
 
   animateTileDraw(idx, callback) {
-    const tBack = new Tile(Tile.BackId);
+    const tBack = new Tile();
     const elem = tBack.element;
     elem.style.position = "absolute"; // for css transitions to work
     elem.style.transition = "all 1s";
@@ -75,11 +145,11 @@ export default class TilesDeck {
     elem.style.marginLeft = "50px";
     elem.style.opacity = "1";
     elem.style.zIndex = "12";
-    deckArea.appendChild(elem);
+    this.deckArea.appendChild(elem);
 
     const animStyle = {
       transition: "all 1s",
-      top: 200 + idx * (Tile.size + 10) + "px",
+      top: 190 + idx * (Tile.size + 30) + "px",
       //opacity: "0"
     };
 
