@@ -392,8 +392,8 @@ export default class HostStorageService {
   update(key, value, index = null, dbName = null) {
     const url = this.getApiUrl(dbName);
 
-    if (index) {
-      throw "'update' does not support 'index' on this client";
+    if (index != null) {
+      throw "'update' does not support 'index' parameter";
     }
 
     console.log(">>> DB '" + url + "' UPDATE for key=" + key);  // #DEBUG
@@ -431,6 +431,16 @@ export default class HostStorageService {
    */
   delete(key, value, id = null, index = null, dbName = null) {
     const url = this.getApiUrl(dbName);
+
+    if (index != null) {
+      throw "'delete' does not support 'index' parameter";
+    }
+
+    if (value == null && id != null) {
+      value = {
+        id: id
+      };
+    }
 
     const urlParam = new URL(url + key);
     // urlParam.search = new URLSearchParams({

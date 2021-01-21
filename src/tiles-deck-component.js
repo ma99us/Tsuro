@@ -96,6 +96,42 @@ export default class TilesDeck {
     return this.isDragonTileTaken ? stateService.state.deckTiles.length : stateService.state.deckTiles.length - 1;
   }
 
+  returnTilesToDeck(ids) {
+
+    const doesPlayerNeedTiles = (idx) => {
+      const playerState = stateService.getPlayerState(idx);
+      return stateService.getIsPlayerPlaying(idx) && playerState.playerTiles.length < 3
+    };
+
+    const findNextDragonTilePlayerIdx = () => {
+      let nextPlayerTurn = stateService.state.playerTurn;
+      do {
+        nextPlayerTurn = stateService.findNextPlayerIdx(true, nextPlayerTurn);
+      } while (nextPlayerTurn >= 0 && !doesPlayerNeedTiles(nextPlayerTurn) && nextPlayerTurn !== stateService.state.playerTurn);
+      return (nextPlayerTurn >= 0 && nextPlayerTurn !== stateService.state.playerTurn) ? nextPlayerTurn : -1;
+    };
+
+    for (let i = 0; i < ids.length; i++) {
+      if (ids[i] === Tile.DragonId) {
+        const nextPlayerTurn = findNextDragonTilePlayerIdx();
+        if (nextPlayerTurn >= 0) {
+          // giving Dragon to the next player
+          const playerState = stateService.getPlayerState(nextPlayerTurn);
+          playerState.playerTiles.push(Tile.DragonId);
+          log("passing \"Dragon Tile\" to " + playerState.playerName);
+        } else {
+          // returning Dragon to the deck
+          stateService.state.deckTiles.splice(0, 0, ids[i]);  // always insert Dragon into index 0
+          log("returning \"Dragon Tile\"");
+        }
+      } else {
+        stateService.state.deckTiles.push(ids[i]);
+        log("returning tile id: " + ids[i] + ", tiles left: " + this.tilesNum);
+      }
+    }
+    this.update();
+  }
+
   drawRandomTile() {
     if (this.tilesNum) {
       let idx = null;
@@ -119,20 +155,6 @@ export default class TilesDeck {
       this.update();
       return null;  // deck is empty
     }
-  }
-
-  returnTilesToDeck(ids) {
-    for (let i = 0; i < ids.length; i++) {
-      if (ids[i] === Tile.DragonId) {
-        //stateService.state.dragonTileTaken = null;
-        stateService.state.deckTiles.splice(0, 0, ids[i]);  // always insert Dragon into index 0
-        log("returning \"Dragon Tile\"");
-      } else {
-        stateService.state.deckTiles.push(ids[i]);
-        log("returning tile id: " + ids[i] + ", tiles left: " + this.tilesNum);
-      }
-    }
-    this.update();
   }
 
   animateTileDraw(idx, callback) {

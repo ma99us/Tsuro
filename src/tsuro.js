@@ -396,10 +396,16 @@ async function onPlayerTileTurn() {
   const noMoreTilesToPlay = stateService.isPlayerPlaying && !stateService.playerState.playerTiles.filter(t => t !== Tile.DragonId).length;
   const lastPlayerPlaying = stateService.isPlayerPlaying && stateService.playingPlayersTotal === 1;
 
-  // if no more tiles left and player has none, then Game Over and this player won.
-  if (lastPlayerPlaying || noMoreTilesToPlay) {
-    log("No tiles left to play or " + stateService.playerState.playerName + " is the last player standing");
+  if (lastPlayerPlaying) {
+    log(stateService.playerState.playerName + " is the last player standing - WIN");
     stateService.playerState.playerStatus = GameStateService.PlayerStates.WON;
+    onPlayerDone(stateService.state.playerTurn);
+    onPlayerTurnEnd();
+    return;
+  } else if (noMoreTilesToPlay) {
+    // if no more tiles left and player has none, then Game Over and this player won.
+    log(stateService.playerState.playerName + " has no tiles left to but not the last player standing - LOSS");
+    stateService.playerState.playerStatus = GameStateService.PlayerStates.LOST;
     onPlayerDone(stateService.state.playerTurn);
     onPlayerTurnEnd();
     return;
@@ -541,6 +547,7 @@ async function onPlayerDone(id) {
   // check for End Game condition
   if (!stateService.playingPlayersTotal) {
     // when final player lost, he won :-)
+
     stateService.state.gameStatus = GameStateService.GameStates.FINISHED;
     playerState.playerStatus = GameStateService.PlayerStates.WON;
 
@@ -564,6 +571,8 @@ async function onPlayerDone(id) {
     //alert("Game Over. " + playerState.playerName + " won!");
     await prompt.showSuccess("Game Over. " + makePlayerElm(id) + " won!", -1);
   } else {
+    // player just lost
+
     // return remaining player tiles back to deck
     tilesDeck.returnTilesToDeck(playerState.playerTiles);
     playerState.playerTiles = [];

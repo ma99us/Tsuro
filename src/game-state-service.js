@@ -202,13 +202,20 @@ export default class GameStateService {
     }
   }
 
-  advancePlayerTurn(onlyPlayingPlayers = true) {
-    const state = this.state;
-    let nextPlayerTurn = state.playerTurn;
+  findNextPlayerIdx(onlyPlayingPlayers = true, playerTurn = this.state.playerTurn) {
+    let nextPlayerTurn = playerTurn;
     do {
       nextPlayerTurn = (nextPlayerTurn + 1) % this.playersTotal;
-    } while (onlyPlayingPlayers && !this.isPlayerPlaying(nextPlayerTurn) && nextPlayerTurn !== state.playerTurn);
-    state.playerTurn = nextPlayerTurn;
+    } while (onlyPlayingPlayers && !this.getIsPlayerPlaying(nextPlayerTurn) && nextPlayerTurn !== playerTurn);
+    return nextPlayerTurn !== playerTurn ? nextPlayerTurn : -1;
+  }
+
+  advancePlayerTurn(onlyPlayingPlayers = true) {
+    const state = this.state;
+    const nextPlayerTurn = this.findNextPlayerIdx(onlyPlayingPlayers);
+    if (nextPlayerTurn >= 0) {
+      state.playerTurn = nextPlayerTurn;
+    }
     return state.playerTurn;
   }
 
