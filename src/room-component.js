@@ -44,9 +44,8 @@ export default class Room {
 
         this.readPlayerInfo();
 
+        ////// #TEST init some dummy players for test only
         // log("Registering players for TEST only!...");
-        //
-        // //#TEST init some dummy players for test only
         // registerPlayer("Mike", colorArrayToStyle(Meeple.Colors[0]));
         // registerPlayer("Stephan", colorArrayToStyle(Meeple.Colors[1]));
         // registerPlayer("Ian", colorArrayToStyle(Meeple.Colors[2]));

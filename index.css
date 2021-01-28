@@ -25,6 +25,14 @@ ul {
     margin: 20px 20px 20px 20px;
 }
 
+#deckArea {
+    width: 230px;
+}
+
+#playerArea {
+    width: 230px;
+}
+
 #playersDiv {
     position: absolute;
     width: 200px;
@@ -116,6 +124,10 @@ ul {
     perspective: 1000px;
 }
 
+.glow-me {
+    animation: glow 0.82s 2 alternate;
+}
+
 @keyframes shake {
     10%, 90% {
         transform: translate3d(-1px, 0, 0);
@@ -131,5 +143,14 @@ ul {
 
     40%, 60% {
         transform: translate3d(4px, 0, 0);
+    }
+}
+
+@keyframes glow {
+    from {
+        box-shadow: 0 0 10px -10px #f47100;
+    }
+    to {
+        box-shadow: 0 0 10px 10px #f47100;
     }
 }

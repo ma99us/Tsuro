@@ -8,8 +8,8 @@ export async function transitionElement(elem, styles, callback = null) {
   if (elem == null || typeof elem !== "object") {
     throw "'elem' should be a DOM element";
   }
-  if (elem == null || typeof styles !== "object") {
-    throw "'styles' should be an object with style names";
+  if (styles == null || typeof styles !== "object") {
+    throw "'styles' should be an object with style attributes";
   }
   if (!document.body.contains(elem)) {
     throw "'elem' element is not on DOM";
@@ -45,6 +45,54 @@ export async function transitionElement(elem, styles, callback = null) {
     requestAnimationFrame(() => {
       setStyles(elem, styles);
     });
+  });
+}
+
+export async function animateElement(elem, animClassName, callback = null) {
+  if (elem == null || typeof elem !== "object") {
+    throw "'elem' should be a DOM element";
+  }
+  if (typeof animClassName !== "string") {
+    throw "'animClassName' should be a string with animation class name";
+  }
+  if (!document.body.contains(elem)) {
+    throw "'elem' element is not on DOM";
+  }
+
+  return new Promise(resolve => {
+    function onEnd(ev) {
+      elem.removeEventListener("animationend", onEnd);
+      elem.removeEventListener("oanimationend", onEnd);
+      elem.removeEventListener("msAnimationEnd", onEnd);
+      elem.removeEventListener("webkitAnimationEnd", onEnd);
+
+      elem.classList.remove(animClassName);
+
+      console.log("animation finished; propertyName=" + ev.propertyName + ", elapsedTime=" + ev.elapsedTime);  //#DEBUG
+
+      if (callback) {
+        callback(ev);
+      }
+      resolve("animateElement done");
+    }
+
+    elem.addEventListener("animationend", onEnd, false);
+    elem.addEventListener("oanimationend", onEnd, false);
+    elem.addEventListener("msAnimationEnd", onEnd, false);
+    elem.addEventListener("webkitAnimationEnd", onEnd, false);
+
+    // force browser to calculate initial style of the element
+    // const computedStyle = window.getComputedStyle(elem, null);
+    // for (let styleName in styles) {
+    //   void computedStyle.getPropertyValue(styleName);
+    // }
+
+    // force browser to render element first, before applying transition result style
+    // requestAnimationFrame(() => {
+    //   elem.classList.add(animClassName);
+    // });
+
+    elem.classList.add(animClassName);
   });
 }
 

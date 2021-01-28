@@ -1,7 +1,8 @@
 import {makeGlowFilter} from "./common/drawing.js";
+import {animateElement} from "./common/dom-animator.js";
 import {DIR} from "./pathfinder.js";
 import Meeple from "./meeple-component.js";
-import {TilesPos, BoardSize, TileThird, PathSize, PathColor, gameDiv, onStartPositionSelection, onPlayerTurnEnd, makePlayerColorStyle, log, stateService} from "./tsuro.js";
+import {TilesPos, BoardSize, TileThird, PathSize, PathColor, gameDiv, infoDiv, onStartPositionSelection, onPlayerTurnEnd, makePlayerColorStyle, log, stateService} from "./tsuro.js";
 
 export default class StartingPositions {
   allMarkersElems = [];
@@ -90,6 +91,8 @@ export default class StartingPositions {
         }
         if (!stateService.isMyTurn) {
           log("it is not your turn!");
+          // animateElement(gameDiv, "shake-me");
+          animateElement(infoDiv, "glow-me");
           return;
         }
 

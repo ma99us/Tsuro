@@ -1,6 +1,6 @@
-import {arrayEquals} from "./common/differ.js";
+import {animateElement} from "./common/dom-animator.js";
 import Tile from "./tile-component.js";
-import {tilesDeck, playerArea, players, log, makePlayerColorStyle, stateService} from "./tsuro.js";
+import {log, makePlayerColorStyle, playerArea, players, stateService, tilesDeck} from "./tsuro.js";
 
 const ccwBtnImgSrc = "img/ccw_btn_1.png";
 const cwBtnImgSrc = "img/cw_btn_1.png";
@@ -198,14 +198,7 @@ export default class PlayerTiles {
       // }
 
       if (elem.tile.id === Tile.DragonId) {
-        elem.style.transform = "translate3d(0, 0, 0)";
-        if (!elem.animState) {
-          elem.classList.add("shake-me");
-          elem.animState = true;
-        } else {
-          elem.classList.remove("shake-me");
-          elem.animState = false;
-        }
+        animateElement(elem, "shake-me");
       } else {
         if (this.selectedTileElem === elem) {
           this.selectTile(null);
@@ -261,14 +254,14 @@ export default class PlayerTiles {
       return;
     }
 
-    if (this.hasDragonTile && tilesDeck.tilesNum) {
-      // We have the dragon, and there are tiles in the deck.
-      // Return the dragon and then draw
-      this.removePlayedTile(Tile.DragonId);
-      // stateService.state.dragonTileTaken = null;
-      log(playerState.playerName + " returns Dragon tile");
-      tilesDeck.returnTilesToDeck([Tile.DragonId]);
-    }
+    // if (this.hasDragonTile && tilesDeck.tilesNum) {
+    //   // We have the dragon, and there are tiles in the deck.
+    //   // Return the dragon and then draw
+    //   this.removePlayedTile(Tile.DragonId);
+    //   // stateService.state.dragonTileTaken = null;
+    //   log(playerState.playerName + " returns Dragon tile");
+    //   tilesDeck.returnTilesToDeck([Tile.DragonId]);
+    // }
 
     const id = tilesDeck.drawRandomTile();
     if (id === null) {
@@ -277,6 +270,13 @@ export default class PlayerTiles {
     } else if (id === Tile.DragonId) {
       // stateService.state.dragonTileTaken = this.client.id;
       log(playerState.playerName + " takes Dragon tile");
+    } else if (this.hasDragonTile) {
+      // We had the dragon, and successfully drew a new tile from the deck.
+      // Return the dragon tile to the deck.
+      this.removePlayedTile(Tile.DragonId);
+      // stateService.state.dragonTileTaken = null;
+      log(playerState.playerName + " returns Dragon tile");
+      tilesDeck.returnTilesToDeck([Tile.DragonId]);
     }
 
     const idx = playerState.playerTiles.length;

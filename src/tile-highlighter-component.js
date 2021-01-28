@@ -1,5 +1,6 @@
+import {animateElement} from "./common/dom-animator.js";
 import Tile from "./tile-component.js";
-import {TilesPos, onPlayerTilePlaced, log, gameDiv, makePlayerColorStyle, stateService } from "./tsuro.js";
+import {infoDiv, playerArea, TilesPos, onPlayerTilePlaced, log, gameDiv, makePlayerColorStyle, stateService } from "./tsuro.js";
 
 export default class TileHighlighter {
   elem = null;
@@ -61,12 +62,15 @@ export default class TileHighlighter {
     this.elem.onclick = async () => {
       if (!stateService.isMyTurn) {
         log("it is not your turn!");
+        //animateElement(this.elem, "shake-me");
+        animateElement(infoDiv, "glow-me");
         return;
       }
 
       const playerState = this.client.getPlayerState();
       if(!playerState.playerSelectedTile){
         log("select a tile first");
+        animateElement(playerArea, "glow-me");
         return;
       }
 

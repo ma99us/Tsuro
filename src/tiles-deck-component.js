@@ -1,6 +1,6 @@
 import {DEBUG_ENABLED} from "./debug-component.js";
 import {makeDropShadowFilter} from "./common/drawing.js";
-import {transitionElement} from "./common/dom-animator.js";
+import {transitionElement, animateElement} from "./common/dom-animator.js";
 import Tile from "./tile-component.js";
 import {log, stateService} from "./tsuro.js"
 
@@ -63,14 +63,7 @@ export default class TilesDeck {
         }
         stateService.myClient.playerTiles.drawNewTile();    // #DEBUG
       } else {
-        elem.style.transform = "translate3d(0, 0, 0)";
-        if (!elem.animState) {
-          elem.classList.add("shake-me");
-          elem.animState = true;
-        } else {
-          elem.classList.remove("shake-me");
-          elem.animState = false;
-        }
+        animateElement(elem, "shake-me");
       }
     };
 
@@ -79,13 +72,19 @@ export default class TilesDeck {
 
   // build initial tiles deck
   initDeckTiles() {
-    // if (!stateService.state.deckTiles || !stateService.state.deckTiles.length) {
     stateService.state.deckTiles = [];
     stateService.state.deckTiles.push(Tile.DragonId); // dragon tile always on the bottom of the deck
     for (let id = 0; id < Tile.TotalNum; id++) {
       stateService.state.deckTiles.push(id);
     }
+
+    ////// #TEST reduced tiles pile just for tests
+    // stateService.state.deckTiles = [];
+    // stateService.state.deckTiles.push(Tile.DragonId); // dragon tile always on the bottom of the deck
+    // for (let id = 10; id < 15; id++) {
+    //   stateService.state.deckTiles.push(id);
     // }
+    //////
   }
 
   get isDragonTileTaken() {
@@ -96,7 +95,7 @@ export default class TilesDeck {
     return this.isDragonTileTaken ? stateService.state.deckTiles.length : stateService.state.deckTiles.length - 1;
   }
 
-  returnTilesToDeck(ids) {
+  returnTilesToDeck(ids, passTheDragon = false, playerIdx = stateService.state.playerTurn) {
 
     const doesPlayerNeedTiles = (idx) => {
       const playerState = stateService.getPlayerState(idx);
@@ -104,17 +103,17 @@ export default class TilesDeck {
     };
 
     const findNextDragonTilePlayerIdx = () => {
-      let nextPlayerTurn = stateService.state.playerTurn;
+      let nextPlayerTurn = playerIdx;
       do {
         nextPlayerTurn = stateService.findNextPlayerIdx(true, nextPlayerTurn);
-      } while (nextPlayerTurn >= 0 && !doesPlayerNeedTiles(nextPlayerTurn) && nextPlayerTurn !== stateService.state.playerTurn);
-      return (nextPlayerTurn >= 0 && nextPlayerTurn !== stateService.state.playerTurn) ? nextPlayerTurn : -1;
+      } while (nextPlayerTurn >= 0 && !doesPlayerNeedTiles(nextPlayerTurn) && nextPlayerTurn !== playerIdx);
+      return (nextPlayerTurn >= 0 && nextPlayerTurn !== playerIdx) ? nextPlayerTurn : -1;
     };
 
     for (let i = 0; i < ids.length; i++) {
       if (ids[i] === Tile.DragonId) {
         const nextPlayerTurn = findNextDragonTilePlayerIdx();
-        if (nextPlayerTurn >= 0) {
+        if (passTheDragon && nextPlayerTurn >= 0) {
           // giving Dragon to the next player
           const playerState = stateService.getPlayerState(nextPlayerTurn);
           playerState.playerTiles.push(Tile.DragonId);

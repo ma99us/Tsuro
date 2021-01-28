@@ -574,7 +574,7 @@ async function onPlayerDone(id) {
     // player just lost
 
     // return remaining player tiles back to deck
-    tilesDeck.returnTilesToDeck(playerState.playerTiles);
+    tilesDeck.returnTilesToDeck(playerState.playerTiles, true, id);
     playerState.playerTiles = [];
 
     log(playerState.playerName + " lost :-(");
