@@ -15,9 +15,11 @@ import Players, {BackgroundColorActive} from "./players-component.js";
 import Room from "./room-component.js";
 import Home from "./home-component.js";
 import {initDebug, initVersion} from "./debug-component.js";
+import {initHowto} from "./howto-component.js";
 
 initDebug();    // will do nothing in PRODUCTION build
 initVersion();
+initHowto();
 
 // DOM elements
 export const gameDiv = document.getElementById('game');
@@ -133,16 +135,16 @@ function initPlayersComponents() {
   }
 }
 
-export function registerPlayer(playerName, playerColor, self = false) {
-  stateService.registerPlayer(playerName, playerColor, self);
+export async function registerPlayer(playerName, playerColor, self = false) {
+  await stateService.registerPlayer(playerName, playerColor, self);
 
   return stateService.fireLocalStateUpdated().finally(() => {
     processState();
   });
 }
 
-export function unregisterPlayer(playerName) {
-  stateService.unregisterPlayer(playerName);
+export async function unregisterPlayer(playerName) {
+  await stateService.unregisterPlayer(playerName);
 
   return stateService.fireLocalStateUpdated().finally(() => {
     processState();
@@ -164,7 +166,7 @@ export function startGame() {
 
   stateService.fireLocalStateUpdated()
     .then(() => {
-      return stateService.updateRoom();
+      return stateService.roomService.syncRooms();
     })
     .finally(() => {
       processState();
@@ -173,7 +175,7 @@ export function startGame() {
 
   stateService.fireLocalStateUpdated()
     .then(() => {
-      return stateService.updateRoom();
+      return stateService.roomService.syncRooms();
     })
     .finally(() => {
       processState();
@@ -198,7 +200,7 @@ export function processState() {
 
       stateService.fireLocalStateUpdated()
         .then(() => {
-          return stateService.updateRoom();
+          return stateService.roomService.syncRooms();
         })
         .finally(() => {
           processState();
@@ -248,15 +250,20 @@ export function processAction(nextState) {
     return;
   }
 
-  //TODO: re-play player action
-  // figure out if it was 'placement' turn or 'tiles' turn
   // get affected player index:
-  const playerIdx = stateService.getStateDiffKeys('players')[0];
-  if (playerIdx == null) {
-    throw "Player's state has to change. This should not happen!";
+  // const playerIdx = stateService.getStateDiffKeys('players')[0];
+  // if (playerIdx == null) {
+  //   throw "Player's state has to change. This should not happen!";
+  // }
+  if(!stateService.getStateDiffKeys('prevPlayerTurn').length || nextState.prevPlayerTurn == null){
+    throw "Player's turn did not change. Can not process such Action";
   }
+  const playerIdx = nextState.prevPlayerTurn;
+
   const client = stateService.getClient(playerIdx);
   const nextPlayerState = nextState.players[playerIdx];
+
+  // figure out if it was 'placement' turn or 'tiles' turn
 
   // check if starting position changed
   if (stateService.getStateDiffKeys('players.' + playerIdx + '.playerStartMarker').length) {
@@ -266,7 +273,9 @@ export function processAction(nextState) {
     stateService.fireLocalStateUpdated().finally(() => {
       processState();
     });
-  } else if (stateService.getStateDiffKeys('players.' + playerIdx + '.playerTilePlaced').length) {
+  }
+  // check if placed tile changed
+  else if (stateService.getStateDiffKeys('players.' + playerIdx + '.playerTilePlaced').length) {
     log("'tile placing' action for playerIdx=" + playerIdx); // #DEBUG
     // this looks like a 'tile placing' action
     // re-play placed tile action's animations
@@ -277,8 +286,14 @@ export function processAction(nextState) {
     // let {col, row} = projectToTile(nextPlayerState.playerMeeple.path, Tile.size / 3);
     // client.highlighter.move(col, row);
     client.highlighter.placeTile();
-  } else {
-    log("Unexpected action for playerIdx=" + playerIdx + ":" + JSON.stringify(stateService.stateDiffs)); // #DEBUG
+  }
+  // something changed but we do not know how to treat it
+  else {
+    log("Unexpected action for playerIdx=" + playerIdx + ": " + JSON.stringify(stateService.stateDiffs), true); // #DEBUG
+    // just apply final state
+    stateService.fireLocalStateUpdated().finally(() => {
+      processState();
+    });
   }
 }
 
@@ -299,9 +314,8 @@ export function onPlayerTurnEnd(client = stateService.client) {
   const playerState = client.getPlayerState();
   playerState.playerTurnsPlayed++;
   if (stateService.playingPlayersTotal) {
-    const oldPlayerTurn = stateService.state.playerTurn;
     stateService.advancePlayerTurn(false);
-    log("onPlayerTurnEnd; advancing player turn; " + oldPlayerTurn + " => " + stateService.state.playerTurn);
+    log("onPlayerTurnEnd; advancing player turn; " + stateService.state.prevPlayerTurn + " => " + stateService.state.playerTurn);
 
     // send local state to host to sync with all clients
     stateService.fireLocalStateUpdated()
@@ -313,7 +327,7 @@ export function onPlayerTurnEnd(client = stateService.client) {
     stateService.advancePlayerTurn(false);  // advance only so that last player action get processed correctly
     stateService.fireLocalStateUpdated()
       .then(() => {
-        return stateService.updateRoom();
+        return stateService.roomService.syncRooms();
       })
       .finally(() => {
         processState();
@@ -381,10 +395,10 @@ async function onPlayerTileTurn() {
     infoDiv.style.border = "";
   }
 
-  // reset player state
+  // reset selected tile
   stateService.playerState.playerTilePlaced = null;
-  stateService.playerState.playerSelectedTile = null;
-  stateService.client.playerTiles.selectedTileElem = null;
+  // stateService.playerState.playerSelectedTile = null;
+  // stateService.client.playerTiles.selectedTileElem = null;
 
   // if (stateService.isMyTurn) {
   //   stateService.client.playerTiles.init();     // show current player tiles

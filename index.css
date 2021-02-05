@@ -62,20 +62,57 @@ ul {
     width: 100%;
     padding-left: 3px;
     padding-right: 3px;
+    z-index: 100;
 }
 
 #debug {
-    width: 90%;
-    padding-left: 5%;
-    padding-right: 5%;
-    box-sizing: border-box;
+    padding-right: 5px;
+}
+
+#debugBtn {
+    color: white;
+    background-color: red;
 }
 
 #debugDiv {
     border: 1px solid orange;
     padding: 5px;
-    background-color: antiquewhite;
+    background-color: red;
+    color: red;
     text-align: right;
+}
+
+#howto {
+    padding-right: 5px;
+}
+
+#howtoBtn {
+    background-color: antiquewhite;
+}
+
+#howtoDiv {
+    border: 1px solid orange;
+    padding: 5px;
+    background-color: antiquewhite;
+    min-width: 800px;
+    width: 70%;
+    margin-left: 15%;
+    text-align: left;
+}
+
+#howtoDiv h3{
+    padding-left: 2em;
+}
+
+#howtoDiv h4{
+    padding-left: 4em;
+}
+
+#version {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    margin-left: 2px;
 }
 
 .vertical-center {
@@ -108,6 +145,12 @@ ul {
 .warning-button {
     background-color: gold;
     color: crimson;
+    font-weight: bolder;
+}
+
+.info-button {
+    background-color: antiquewhite;
+    color: black;
     font-weight: bolder;
 }
 

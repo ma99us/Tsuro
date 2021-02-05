@@ -21,7 +21,8 @@ export default class GameStateService {
     gameStatus: null,           // game status, enum, one of the {starting, playing, finished, etc}
     players: [],                // array of player states objects (as bellow)
     playerTurn: 0,              // index of the player, whose turn it is to play
-    roundNum: 0,                 // game round number
+    prevPlayerTurn : null,      // index of the player who advanced the player turn last (player show turn just ended)
+    roundNum: 0,                // game round number
     // game specific properties:
     deckTiles: [],              // array of tile ids, left in the deck
     boardTiles: [],             // array of objects {column:, row:, tile:, rotation: }
@@ -139,6 +140,10 @@ export default class GameStateService {
     return this.selfPlayerName ? state.players.findIndex(p => p.playerName === this.selfPlayerName) : -1;
   }
 
+  get isGameOwner() {
+    return this.myPlayerId === 0;
+  }
+
   registerGameState() {
     this.gameState = {...GameStateService.gameStateTemplate};
     console.log('registerGameState;') //#DEBUG
@@ -171,7 +176,7 @@ export default class GameStateService {
       console.log("We are '" + this.selfPlayerName + "', player id:" + this.myPlayerId);
     }
 
-    this.updateRoom();
+    return this.roomService.syncRooms();
   }
 
   unregisterPlayer(name) {
@@ -196,7 +201,7 @@ export default class GameStateService {
     }
 
     if (this.playersTotal > 0) {
-      this.updateRoom();
+      return this.roomService.syncRooms();
     } else if (this.roomService.room.id) {
       return this.roomService.unregisterRoom();
     }
@@ -214,6 +219,7 @@ export default class GameStateService {
     const state = this.state;
     const nextPlayerTurn = this.findNextPlayerIdx(onlyPlayingPlayers);
     if (nextPlayerTurn >= 0) {
+      state.prevPlayerTurn = state.playerTurn;
       state.playerTurn = nextPlayerTurn;
     }
     return state.playerTurn;
@@ -235,30 +241,30 @@ export default class GameStateService {
     return this.getIsPlayerReady(idx) && playerState.playerStatus < GameStateService.PlayerStates.LOST;
   }
 
-  async updateRoom(refresh = true) {
+  async updateRoom() {
     const state = this.state;
-    const selfOwner = this.myPlayerId === 0;
-
-    if (refresh && this.gameId && !this.roomService.room.id) {
-      // we are in a room but have no 'room' info yet. fetch it right now!
-      await this.roomService.getRoom(this.gameId);
+    const room = this.roomService.room;
+    let doRegister = false;
+    if (!room.id && !this.isGameOwner) {
+      // room is not registered yet and we are nto the owner
+      console.log("room has to be registered by the 'owner' first");
+      return;
+    } else if (!room.id && this.gameId && this.isGameOwner) {
+      console.log("registering room id " + this.gameId);
+      room.id = parseInt(this.gameId); // register new room if id was not set yet
+      doRegister = true;
     }
 
-    const room = this.roomService.room;
-    room.gameId = this.gameId;
     room.gameName = this.gameName;
     room.gameStatus = state.gameStatus;
     room.playersNum = this.playersTotal;
     room.playersMax = this.playersMax;
     room.createdBy = state.players.length ? this.getPlayerState(0).playerName : null; // player id=0 is the "owner"
 
-    if (!room.id && selfOwner) {
+    if (doRegister) {
       return this.roomService.registerRoom();
-    } else if (room.id) {
-      return this.roomService.updateRoom();
     } else {
-      // do not register that new room before first player gets registered
-      //throw "Can't update room. This should not happen!";
+      return this.roomService.updateRoom();
     }
   }
 
@@ -339,14 +345,18 @@ export default class GameStateService {
     if (this.gameId) {
       // get current game state from host or submit local state if none exists on host yet
       this.registerGameState();
-      this.getRemoteState().then(() => {
-        this.roomService.getRoom(this.gameId);
-      });
+      this.getRemoteState()
+        .then(() => {
+          return this.roomService.syncRooms();
+        })
+        .then(() => {
+          onGameLoaded();
+        });
     } else {
-      this.roomService.getRooms().then(() => {
-        onGameLoaded();
-        processState();
-      });
+      this.roomService.syncRooms()
+        .then(() => {
+          onGameLoaded();
+        });
     }
   }
 
@@ -372,18 +382,20 @@ export default class GameStateService {
 
     this.stateDiffs = diffObjects(this.gameState, remoteState); // build patch 'diff' for changes
     //Check if current player action just ended, and do not apply new state right away
-    this.isActionState = remoteState.version !== 0 && remoteState.version === this.gameState.version + 1
-      && remoteState.playerTurn !== this.gameState.playerTurn
+    this.isActionState = remoteState.version !== 0
+      //&& remoteState.version === this.gameState.version + 1
+      //&& remoteState.playerTurn !== this.gameState.playerTurn
+      && remoteState.prevPlayerTurn === this.gameState.playerTurn
     ;
     if (this.isActionState) {
       // queue pending state
       this.nextState = remoteState;
     } else {
       // overwrite local state now
-      this.gameState = remoteState;
+      this.applyNextState(remoteState);
     }
 
-    if (remoteState.version === 0) {  // special case - rest state and reload
+    if (remoteState.version === 0) {  // special case - reset state and reload
       window.location.reload();
     }
 
@@ -415,10 +427,25 @@ export default class GameStateService {
     return keys;
   }
 
+  applyNextState(nextState) {
+    //TODO: potentially filter incoming state before applying it
+    const idx = this.myPlayerId;
+    const player = idx >= 0 ? this.state.players[this.myPlayerId] : null;
+    const playerSelectedTile = player != null ? {...player.playerSelectedTile} : null;
+
+    this.gameState = nextState;
+
+    if (playerSelectedTile) {
+      this.state.players[this.myPlayerId].playerSelectedTile = playerSelectedTile;
+    }
+
+    return this.gameState;
+  }
+
   fireLocalStateUpdated() {
     if (this.nextState) {
       // apply pending state instead
-      this.gameState = this.nextState;
+      this.applyNextState(this.nextState);
       this.nextState = null;
       // this.onRemoteStateUpdated();
       return Promise.resolve();
@@ -444,13 +471,15 @@ export default class GameStateService {
         //log('getRemoteState; state: ' + JSON.stringify(remoteState));
         //NOTE: version = 0 is a special case! Always force local state update.
         if (!remoteState) {
+          log('no remote state; pushing local');
+          this.state.version++;
           return this.updateRemoteState();
         } else if (remoteState.version > this.state.version || remoteState.version === 0) {
           return this.onRemoteStateUpdate(remoteState);
+        } else {
+          log('old remote state ignored; local version=' + this.state.version + '; remote version=' + remoteState.version);
+          log(JSON.stringify(remoteState)); // #DEBUG
         }
-      })
-      .then(() => {
-        onGameLoaded();
       })
       .then(() => {
         this.onRemoteStateUpdated();

@@ -47,7 +47,7 @@ export async function initDebug() {
   const debugDeleteAllRoomsBtn = document.getElementById('debugDeleteAllRoomsBtn');
 
   debugBtn.onclick = ()=> {
-    if(debugDiv.style.display != "block"){
+    if(debugDiv.style.display !== "block"){
       debugDiv.style.display = "block";
     } else {
       debugDiv.style.display = "none";
@@ -76,9 +76,10 @@ export async function initDebug() {
 
 // add build version
 export function initVersion() {
-  const footerDiv = document.getElementById('footer');
-  const verElem = document.createElement("span");
-  verElem.classList.add("small-text")
-  verElem.innerHTML = "v." + getVersion();
-  footerDiv.insertBefore(verElem, footerDiv.childNodes[0]);
+  // const parent = document.getElementById('body');
+  const elem = document.createElement("span");
+  elem.setAttribute("id", "version");
+  elem.classList.add("small-text");
+  elem.innerHTML = "v." + getVersion();
+  document.body.appendChild(elem);
 }

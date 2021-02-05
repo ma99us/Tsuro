@@ -12,13 +12,23 @@ export async function includeHTML(elem, file) {
     throw "'file' should be a string file path";
   }
 
+  const htmlToElements = (html) => {
+    const template = document.createElement('template');
+    html = html.trim(); // Never return a text node of whitespace as the result
+    template.innerHTML = html;
+    return template.content.childNodes;
+  };
+
   return new Promise((resolve, reject) => {
     /* Make an HTTP request using the attribute value as the file name: */
     const xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function () {
       if (this.readyState == 4) {
         if (this.status == 200) {
-          elem.innerHTML += this.responseText;
+          const elems = htmlToElements(this.responseText);
+          for (let i = 0; i < elems.length; i++) {
+            elem.appendChild(elems[i]);
+          }
           resolve("OK: " + file);
         }
         else if (this.status == 404) {

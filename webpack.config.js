@@ -5,12 +5,14 @@ const CopyPlugin = require("copy-webpack-plugin");
 
 function getVersion() {
   const curDate = new Date();
-  return "" + curDate.getFullYear()
-    + (curDate.getMonth() + 1)
-    + curDate.getDate() + "."
-    + curDate.getHours()
-    + curDate.getMinutes()
-    + curDate.getSeconds();
+  return ""
+    + curDate.getFullYear().toString().substr(-2)
+    + ('0' + (curDate.getMonth() + 1)).substr(-2)
+    + ('0' + curDate.getDate()).substr(-2)
+    + '.'
+    + ('0' + curDate.getHours()).substr(-2)
+    + ('0' + curDate.getMinutes()).substr(-2)
+    ;
 }
 
 module.exports = (env, argv) => {

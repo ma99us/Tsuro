@@ -1,5 +1,5 @@
 <div style="position: absolute; top: 1em; right: 1em; text-align: right">
-    <button id="roomBackHome" class="warning-button">Go Home</button>
+    <button id="roomBackHome" class="info-button large-text">Go Home</button>
 </div>
 <div style="text-align: center">
     <h1>No-nonsense Tsuro</h1>
@@ -9,6 +9,12 @@
     <ul id="roomPlayersList">
     </ul>
 
+    <div style="margin-top: 1em">
+        <h5 id="roomInfo" class="text-info">The game plays best with 4-6 players.</h5>
+        <button id="roomStartGame" class="large-text">Start Game</button>
+        <h4 id="roomWaitToStart">Wait for <span id="roomGameOwner">?????</span> to start the game.</h4>
+    </div>
+
     <div id="roomPlayerInfo">
         <label for="roomPlayerName">Your name:</label><input id="roomPlayerName" class="large-text" type="text">
         <label for="roomPlayerColor">Favorite color:</label><input id="roomPlayerColor" class="vertical-center" type="color" list="roomPlayerPresetColors">
@@ -16,8 +22,4 @@
         <button id="roomPlayerInfoReady" class="vertical-center large-text">Join</button>
     </div>
 
-    <div style="margin-top: 1em">
-        <button id="roomStartGame" class="large-text">Start Game</button>
-        <h4 id="roomWaitToStart">Wait for <span id="roomGameOwner">?????</span> to start the game.</h4>
-    </div>
 </div>

@@ -28,6 +28,9 @@ export default class Home {
   }
 
   onJoinExistingGame(gameId) {
+    if (!gameId) {
+      return;
+    }
     stateService.newGame(gameId);
   }
 
@@ -44,14 +47,14 @@ export default class Home {
   init() {
     const makeRoom = (room) => {
       const elem = document.createElement("div");
-      elem.innerHTML = `<span class="large-text">${room.gameName}</span> created by "${room.createdBy}"; players: ${room.playersNum} out of ${room.playersMax}; (ID: ${room.gameId})`;
+      elem.innerHTML = `<span class="large-text">${room.gameName}</span> created by "${room.createdBy}"; players: ${room.playersNum} out of ${room.playersMax}; (ID: ${room.id})`;
 
       // add "Join" button
       const btn = document.createElement("button");
       btn.innerHTML = "Join Game";
       btn.style.marginLeft = "1em";
       btn.onclick = () => {
-        this.onJoinExistingGame(room.gameId);
+        this.onJoinExistingGame(room.id);
       };
       elem.appendChild(btn);
 

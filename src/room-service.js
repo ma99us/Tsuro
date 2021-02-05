@@ -2,6 +2,7 @@ import API from "./services/api-config.js";
 import HostStorageService from "./services/host-storage-service.js";
 import {stateService, log, processState} from "./tsuro.js";
 import MessageBusService from "./services/message-bus-service";
+import {diffChildKeys, diffObjects} from "./common/differ";
 
 export default class RoomService {
 
@@ -11,8 +12,8 @@ export default class RoomService {
   // Room state object template
   static roomTemplate = {
     // generic properties:
+    id: null,                   // unique id of the game/room
     version: 0,                 // latest state version. Iterate on every host update!
-    gameId: null,               // unique id of the game/room
     gameName: null,             // name of the game
     gameStatus: null,           // game status, enum, one of the {starting, playing, finished, etc}
     playersNum: 0,              // current registered players in the room
@@ -29,9 +30,9 @@ export default class RoomService {
     this.messageBusService.subscribe(null, (eventName, data) => { //FIXME: subscribe to all events for now
       // console.log("<<< " + eventName + ": " + JSON.stringify(data));  // #DEBUG
 
-      if (eventName === 'db-event' && data.event === 'UPDATED' && data.key === 'rooms') {
+      if (eventName === 'db-event' && data.key === 'rooms') {
         //this.onAllRoomsUpdate(data.value);
-        this.getRooms();
+        this.syncRooms();
       }
     });
   }
@@ -51,15 +52,9 @@ export default class RoomService {
   getRoom(gameId) {
     return this.getRooms()
       .then(rooms => {
-        return rooms ? rooms.find(l => l && l.gameId === gameId) : null;
+        return rooms ? rooms.find(l => l && l.id == gameId) : null;   // intentional equal-ish
       }).then(room => {
-        if (!room) {
-          console.log("room game id " + gameId + " is not registered");
-          const selfOwner = stateService.myPlayerId === 0;  // we are the owners of the room, so register it
-          if (selfOwner) {
-            return stateService.updateRoom(false);  // do not try to fetch this room again, it needs to be registered first
-          }
-        } else if (room.version > this.room.version || room.version === 0) {
+        if (room && (room.version > this.room.version || room.version === 0)) {
           this.onRemoteRoomUpdate(room);
         }
         return room;
@@ -73,7 +68,7 @@ export default class RoomService {
       return;
     }
     if (!this.room.id) {
-      throw 'room is detached from DB';
+      throw "room has to be registered first. This should not happen!";
     }
     return this.hostStorageService.delete("rooms", this.room, this.room.id, null, API.HOST_DB_NAME)   // use home db
       .then(() => {
@@ -104,6 +99,9 @@ export default class RoomService {
     if (!this.room) {
       return;
     }
+    if (!this.room.id) {
+      throw 'Room has to have an id. This should not happen!';  //paranoia check
+    }
     this.room.version++;
     return this.hostStorageService.update("rooms", this.room, null, API.HOST_DB_NAME)   // use home db
       .then((room) => {
@@ -111,27 +109,63 @@ export default class RoomService {
         if (this.room.id !== id) {
           throw 'Room id mismatch. This should not happen!';  //paranoia check
         }
-        console.log("room updated; DB id=" + id);   // #DEBUG
+        console.log("room updated; id=" + id);   // #DEBUG
       })
       .catch(err => {
         log(err, true);
       });
   }
 
+  syncRooms() {
+    if (stateService.gameId) {
+      return this.getRoom(stateService.gameId)
+        .then((room) => {
+          return stateService.updateRoom(); // try to register
+        });
+    } else {
+      return this.getRooms();
+    }
+  }
+
   onRemoteRoomUpdate(room) {
     this.room = room;
     console.log("got room update; " + JSON.stringify(this.room));   // #DEBUG
-    processState();
+    if (!stateService.gameId) {
+      // only update state if on Home screen
+      processState();
+    }
   }
 
   onAllRoomsUpdate(rooms) {
+    this.roomsDiffs = diffObjects(this.rooms, rooms); // build patch 'diff' for changes
     this.rooms = rooms;
-    console.log("got all rooms update; " + JSON.stringify(this.rooms));   // #DEBUG
-    processState();
+    // const diffs = this.getRoomsDiffKeys('version');
+    // console.log("got all rooms update; diffs: " + JSON.stringify(this.roomsDiffs) + "; keys: " + JSON.stringify(diffs));   // #DEBUG
+    // if (this.roomsDiffs.size) {
+    //   console.log("got all rooms update; diffs: " + JSON.stringify(this.roomsDiffs) + "; rooms: " + JSON.stringify(this.rooms));   // #DEBUG
+    // }
+    if (!stateService.gameId) {
+      // only update state if on Home screen
+      processState();
+    }
     // const room = (this.room.id && this.rooms) ? this.rooms.find(l => l && l.id === this.room.id) : null;
     // if (room && (room.version > this.room.version || room.version === 0)) {
     //   this.onRemoteRoomUpdate(room);
     // }
+  }
+
+  getRoomsDiffKeys(prefix, added = true, changed = true, deleted = true) {
+    const keys = [];
+    if (this.roomsDiffs && added) {
+      keys.push(...diffChildKeys(this.roomsDiffs, `+.${prefix}`));
+    }
+    if (this.roomsDiffs && changed) {
+      keys.push(...diffChildKeys(this.roomsDiffs, `*.${prefix}`));
+    }
+    if (this.roomsDiffs && deleted) {
+      keys.push(...diffChildKeys(this.roomsDiffs, `-.${prefix}`));
+    }
+    return keys;
   }
 
   ///// DEBUG ONLY!

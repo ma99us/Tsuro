@@ -21,6 +21,7 @@ export default class Room {
         this.roomPlayerName = document.getElementById('roomPlayerName');
         this.roomPlayerColor = document.getElementById('roomPlayerColor');
         this.roomPlayerInfoReady = document.getElementById('roomPlayerInfoReady');
+        this.roomInfo = document.getElementById('roomInfo');
         this.startGame = document.getElementById('roomStartGame');
         this.waitToStart = document.getElementById('roomWaitToStart');
         this.gameOwner = document.getElementById('roomGameOwner');
@@ -185,6 +186,7 @@ export default class Room {
 
     this.startGame.style.display = stateService.myPlayerId === 0 ? "inline-block" : "none";
     this.waitToStart.style.display = stateService.myPlayerId > 0 ? "inline-block" : "none";
+    this.roomInfo.style.display = (stateService.playersTotal < 4 || stateService.playersTotal > 6) ? "block" : "none";
 
     const idx = stateService.getStateDiffKeys('players');
     idx.forEach(i => {
